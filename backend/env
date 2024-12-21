@@ -1,0 +1,4 @@
+MONGODB_URI=mongodb+srv://developersrijan:IlLv8KaAI4FrhUSo@quizapp.xsvs7.mongodb.net/
+JWT_SECRET=InviciousZ
+PORT=7009
+ADMIN=myAImate
