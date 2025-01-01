@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Login from "./components/Login";
 import { AuthProvider } from "./context/AuthContext";
 import SchoolRanking from  "./components/SchoolRanking";
+import MarksFrequency from "./components/MarksFrequency";
+import Dashboard from "./components/Dashboard";
 
 const App = () => {
   return (
@@ -13,6 +15,8 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Login />} />  
             <Route path="/SchoolRanking" element={<SchoolRanking />} />  
+            <Route path="/MarksFrequency" element={<MarksFrequency />} />  
+            <Route path="/Dashboard" element={<Dashboard />} />  
             {/* <Route path="/Pdf1" element={<Pdf1/>} />   */}
           </Routes>
         </div>
