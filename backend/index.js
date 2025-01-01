@@ -4,6 +4,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import resultRoute from './Routes/ResultRoute.js';
 import dotenv from 'dotenv';
+import DataToJson from './Routes/DataToJson.js';
 
 dotenv.config(); // Load environment variables
 
@@ -35,6 +36,7 @@ app.get('/', (req, res) => {
 
 // Use Routes
 app.use('/result', resultRoute);
+app.use('/datatoJson', DataToJson);
 
 // Global error handling
 app.use((err, req, res, next) => {
