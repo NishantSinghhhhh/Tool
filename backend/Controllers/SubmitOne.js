@@ -18,7 +18,6 @@ export const submitText = async (req, res) => {
     const client = new MongoClient(mongo_url);
 
     try {
-        
         await client.connect();
         const db = client.db(dbName);
         const usersCollection = db.collection('users');
@@ -42,7 +41,7 @@ export const submitText = async (req, res) => {
             userMap.set(user.username, user.setid);
         });
 
-        const userScores = new Map();
+        const userScores = [];
 
         for (let [username, setid] of userMap) {
             const answerQuery = await answersCollection.findOne({ username });
@@ -52,35 +51,57 @@ export const submitText = async (req, res) => {
 
                 if (setAnswers) {
                     const userAnswers = answerQuery.answers;
-                    let marks = 0;
+                    let totalMarks = 0;
+                    let section1Marks = 0;
+                    let section2Marks = 0;
+                    let section3Marks = 0;
 
                     Object.keys(setAnswers.answers).forEach((questionNumber) => {
                         const correctAnswer = setAnswers.answers[questionNumber];
                         const userAnswer = userAnswers[questionNumber];
-                    
+
                         if (userAnswer === "") {
                             // Do nothing for unattempted questions
                         } else if (userAnswer === correctAnswer) {
-                            marks += 4; // Add 4 marks for correct answers
+                            totalMarks += 4; // Add 4 marks for correct answers
+                            if (questionNumber >= 1 && questionNumber <= 10) {
+                                section1Marks += 4;
+                            } else if (questionNumber >= 11 && questionNumber <= 20) {
+                                section2Marks += 4;
+                            } else if (questionNumber >= 21 && questionNumber <= 25) {
+                                section3Marks += 4;
+                            }
                         } else {
-                            marks -= 1; // Deduct 1 mark for incorrect answers
+                            totalMarks -= 1; // Deduct 1 mark for incorrect answers
+                            if (questionNumber >= 1 && questionNumber <= 10) {
+                                section1Marks -= 1;
+                            } else if (questionNumber >= 11 && questionNumber <= 20) {
+                                section2Marks -= 1;
+                            } else if (questionNumber >= 21 && questionNumber <= 25) {
+                                section3Marks -= 1;
+                            }
                         }
                     });
-                    
 
-                    userScores.set(username, marks);
+                    userScores.push({
+                        username,
+                        totalMarks,
+                        section1Marks,
+                        section2Marks,
+                        section3Marks,
+                    });
                 }
             }
         }
 
         console.log('User Scores:', userScores);
 
-        // Send both user info and scores to the frontend
+        // Send user scores and matching user information to the frontend
         res.status(200).json({
             success: true,
             message: matchingUsers.length > 0 ? 'Matching users found and scores calculated!' : 'No matching users found.',
             userInfo: matchingUsers, // Array of matching user objects
-            scores: Array.from(userScores), // Convert Map to an array
+            scores: userScores, // Array of user scores with section-wise details
         });
 
     } catch (error) {
