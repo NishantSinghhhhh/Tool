@@ -3,6 +3,7 @@ import logo3 from "../assets/logo.svg";
 import logo4 from "../assets/Ait.svg";
 import { creds } from "../data/creds.ts";
 import { useAuth } from "../context/AuthContext";
+import PDFDownload from "./PdfDownload.tsx";
 
 interface UserScore {
   username: string;
@@ -10,12 +11,20 @@ interface UserScore {
   section1Marks: number;
   section2Marks: number;
   section3Marks: number;
+  category: string;
+  studentName: string
+}
+
+interface UserInfo {
+  username: string;
+  student: string;
+  setid: string;
 }
 
 interface BackendResponse {
   success: boolean;
   message: string;
-  userInfo: any[];
+  userInfo: UserInfo[];
   scores: UserScore[];
 }
 
@@ -57,7 +66,19 @@ const Dashboard: React.FC = () => {
 
       const data: BackendResponse = await response.json();
       console.log("Response from backend:", data);
-      setFetchedData(data);
+
+      // Add student name and category to scores
+      const updatedScores = data.scores.map((score) => {
+        const matchingUser = data.userInfo.find((user) => user.username === score.username);
+        const category = matchingUser?.setid.startsWith("67") ? "Category 1" : "Category 2";
+        return {
+          ...score,
+          studentName: matchingUser?.student || "Unknown",
+          category,
+        };
+      });
+
+      setFetchedData({ ...data, scores: updatedScores });
     } catch (error) {
       console.error("Error sending school name to backend:", error);
       alert("Failed to fetch details.");
@@ -67,7 +88,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-[120vh] bg-gray-50">
       <nav className="bg-white shadow-lg">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-between items-center h-20">
@@ -78,9 +99,7 @@ const Dashboard: React.FC = () => {
       </nav>
 
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-800 mb-3">
-          Round 1 Detailed Results
-        </h1>
+        <h1 className="text-4xl font-bold text-gray-800 mb-3">Round 1 Detailed Results</h1>
       </div>
 
       <div className="text-black text-2xl font-bold flex justify-center items-center pb-10">
@@ -97,40 +116,107 @@ const Dashboard: React.FC = () => {
         >
           {isFetching ? "Fetching..." : "Fetch Details"}
         </button>
+
+        <div>
+          {/* <PDFDownload/> */}
+        </div>
       </div>
 
       {fetchedData && (
-        <div className="mt-10 max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-4 text-gray-700">
-            Fetched Results for {schoolName}
-          </h2>
-          <p className="text-gray-600 mb-6">{fetchedData.message}</p>
-
-          <h3 className="text-lg font-semibold mb-2 text-gray-800">Scores:</h3>
-          <table className="table-auto w-full text-left">
-            <thead>
-              <tr>
-                <th className="px-4 text-black py-2">Username</th>
-                <th className="px-4 text-black py-2">Total Marks</th>
-                <th className="px-4 text-black py-2">Section 1</th>
-                <th className="px-4 text-black py-2">Section 2</th>
-                <th className="px-4 text-black py-2">Section 3</th>
+  <div className="mt-10 max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gradient-to-r from-blue-500 to-blue-600">
+          <tr>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
+              Username
+            </th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
+              Student Name
+            </th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
+              Total Marks
+            </th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
+              Section 1
+            </th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
+              Section 2
+            </th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
+              Section 3
+            </th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
+              Category
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {/* Sort and display category 1 */}
+          {fetchedData.scores
+            .filter((score) => score.category === "Category 1")
+            .sort((a, b) => b.totalMarks - a.totalMarks) // Sort descending by totalMarks
+            .map((score, index) => (
+              <tr key={index} className="hover:bg-gray-50 transition-colors duration-200">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm text-gray-900">{score.username}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.studentName}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.totalMarks}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.section1Marks}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.section2Marks}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.section3Marks}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.category}</span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {fetchedData.scores.map((score, index) => (
-                <tr  key={index} className="border-t">
-                  <td className="px-4 text-black py-2">{score.username}</td>
-                  <td className="px-4 text-black py-2">{score.totalMarks}</td>
-                  <td className="px-4 text-black py-2">{score.section1Marks}</td>
-                  <td className="px-4 text-black py-2">{score.section2Marks}</td>
-                  <td className="px-4 text-black py-2">{score.section3Marks}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+
+          {/* Sort and display category 2 */}
+          {fetchedData.scores
+            .filter((score) => score.category === "Category 2")
+            .sort((a, b) => b.totalMarks - a.totalMarks) // Sort descending by totalMarks
+            .map((score, index) => (
+              <tr key={index} className="hover:bg-gray-50 transition-colors duration-200">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm text-gray-900">{score.username}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.studentName}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.totalMarks}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.section1Marks}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.section2Marks}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.section3Marks}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">{score.category}</span>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };
