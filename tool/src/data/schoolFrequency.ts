@@ -1,4 +1,14 @@
-export const schoolFrequencyData = {
+export const schoolFrequencyData:{
+  totalMarks: Record<string, number>;
+  category1Marks: Record<string, number>;
+  category2Marks: Record<string, number>;
+  category1Section1Marks: Record<string, number>;
+  category1Section2Marks: Record<string, number>;
+  category1Section3Marks: Record<string, number>;
+  category2Section3Marks: Record<string, number>;
+  category2Section2Marks: Record<string, number>;
+  category2Section1Marks: Record<string, number>;
+} = {
   "totalMarks": {
     "0": 3,
     "5": 1,

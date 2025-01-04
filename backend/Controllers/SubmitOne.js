@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 const mongo_url = process.env.MONGO_CONN;
-const dbName = 'test';
+const dbName = 'schools';
 
 
 export const submitText = async (req, res) => {
