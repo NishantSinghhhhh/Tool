@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.svg";
-import logo4 from "../assets/Ait.svg";
+import logo from "../../assets/logo.svg";
+import logo4 from "../../assets/Ait.svg";
 
 type SchoolRankingData = {
   name: string;
   rank: number;
 }[];
 
-const MarksFrequency: React.FC = () => {
+const SchoolRanking: React.FC = () => {
   const [data, setData] = useState<SchoolRankingData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,7 @@ const MarksFrequency: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("http://localhost:7009/datatoJson/SchoolFrequecny", {
+      const response = await fetch("http://localhost:7009/datatoJson/SchoolRanking", {
         method: "POST", // Changed to POST to send data
         headers: {
           "Content-Type": "application/json",
@@ -81,4 +81,4 @@ const MarksFrequency: React.FC = () => {
   );
 };
 
-export default MarksFrequency;
+export default SchoolRanking;

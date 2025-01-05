@@ -42,7 +42,7 @@ export const creds = [
     { username: "NAVYUG11001033", schoolName: "Army Public School, Dhaula Kuan", password: "apsnavyug" },
     { username: "NAVYUG41400172", schoolName: "Army Public School Ahmednagar", password: "apsnavyug" },
     { username: "NAVYUG41100178", schoolName: "Army Public School Pune", password: "apsnavyug" },
-    { username: "NAVYUG24920574", schoolName: "Army Public School Raiwala", password: "apsnavyug" },
+    { username: "NAVYUG24920574", schoolName: "Army Public School, Raiwala", password: "apsnavyug" },
     { username: "NAVYUG18001051", schoolName: "Army Public School Ratnuchak", password: "apsnavyug" },
     { username: "NAVYUG26364549", schoolName: "Army Public School Ranikhet", password: "apsnavyug" },
     { username: "NAVYUG50005643", schoolName: "Army Public School Rk Puram Secunderabad", password: "apsnavyug" },

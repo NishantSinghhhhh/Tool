@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Login from "./components/Login";
 import { AuthProvider } from "./context/AuthContext";
-import SchoolRanking from  "./components/SchoolRanking";
-import MarksFrequency from "./components/MarksFrequency";
+import SchoolRanking from  "./components/DataGeneration/SchoolRanking";
+import MarksFrequency from "./components/DataGeneration/MarksFrequency";
 import Dashboard from "./components/Dashboard";
 
 const App = () => {
