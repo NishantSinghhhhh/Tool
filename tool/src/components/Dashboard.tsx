@@ -10,7 +10,6 @@ import Header from "./Dashboard/Header.tsx";
 import TableComponent from "./Dashboard/Table.tsx";
 import ScoresTable from "./Dashboard/ScoreTable.tsx";
 
-
 interface UserScore {
   username: string;
   totalMarks: number;
@@ -20,19 +19,28 @@ interface UserScore {
   category: string;
   studentName: string
 }
-
 interface UserInfo {
   username: string;
   student: string;
   setid: string;
 }
-
 interface BackendResponse {
   success: boolean;
   message: string;
   userInfo: UserInfo[];
   scores: UserScore[];
 }
+
+type StaticText1 = {
+  title: string;
+  paragraphs: string[];
+};
+
+type StaticTexts1 = {
+  [category: string]: {
+    [sectionNumber: number]: StaticText1;
+  };
+};
 
 interface SchoolRankingData {
   school: string;
@@ -362,88 +370,141 @@ const Dashboard: React.FC = () => {
 
   pdf.addImage(footer, "PNG", 13, startY + 5, 185, 1.5);
     
-  const staticTexts = {
-    "Category 1": {
-      0: "Total Marks for Category 1",
-      1: "Section 1 - Category 1 Details",
-      2: "Section 2 - Category 1 Details",
-      3: "Section 3 - Category 1 Details",
-    },
-    "Category 2": {
-      0: "Total Marks for Category 2",
-      1: "Section 1 - Category 2 Details",
-      2: "Section 2 - Category 2 Details",
-      3: "Section 3 - Category 2 Details",
-    }
-  };
-    
+    const staticTexts = {
+      "Category 1": {
+        0: "Total Marks for Category 1",
+        1: "Section 1 - Category 1 Details",
+        2: "Section 2 - Category 1 Details",
+        3: "Section 3 - Category 1 Details",
+      },
+      "Category 2": {
+        0: "Total Marks for Category 2",
+        1: "Section 1 - Category 2 Details",
+        2: "Section 2 - Category 2 Details",
+        3: "Section 3 - Category 2 Details",
+      }
+    };
   
-  const addCategoryTable = (
-    category: "Category 1" | "Category 2",
-    sectionNumber: 0 | 1 | 2 | 3,
-    startY: number
-  ) => {
-    // Ensure font settings are correct
-    pdf.setFontSize(12);
-    pdf.setFont("helvetica", "normal");
-  
-    // Get the static text for the category and section
-    const staticText = staticTexts[category][sectionNumber];
-    startY += 6;  // Add space after static text for the next element
+    const staticTexts1: StaticTexts1 = {
+      "Category 1": {
+        0: {
+          title: "Total Marks for Category 1",
+          paragraphs: [
+            "This section represents the total marks for Category 1.",
+            "It includes all the sections under Category 1.",
+            "Top performers: {{topPerformers}}", // Placeholder for top performers
+          ],
+        },
+        1: {
+          title: "Section 1 - Category 1 Details",
+          paragraphs: [
+            "Details for Section 1 in Category 1 are provided here.",
+            "It contains information regarding the performance of students.",
+            "Top performers: {{topPerformers}}", // Placeholder for top performers
+          ],
+        },
+        2: {
+          title: "Section 2 - Category 1 Details",
+          paragraphs: [
+            "Details for Section 2 in Category 1 are provided here.",
+            "It includes all relevant data for this section.",
+            "Top performers: {{topPerformers}}", // Placeholder for top performers
+          ],
+        },
+        3: {
+          title: "Section 3 - Category 1 Details",
+          paragraphs: [
+            "Details for Section 3 in Category 1 are provided here.",
+            "Section 3 examines various aspects of the category.",
+            "Top performers: {{topPerformers}}", // Placeholder for top performers
+          ],
+        },
+      },
+      "Category 2": {
+        0: {
+          title: "Total Marks for Category 2",
+          paragraphs: [
+            "This section represents the total marks for Category 2.",
+            "It includes all sections under Category 2.",
+            "Top performers: {{topPerformers}}", // Placeholder for top performers
+          ],
+        },
+        1: {
+          title: "Section 1 - Category 2 Details",
+          paragraphs: [
+            "Details for Section 1 in Category 2 are provided here.",
+            "This section focuses on the students' performance in Section 1.",
+            "Top performers: {{topPerformers}}", // Placeholder for top performers
+          ],
+        },
+        2: {
+          title: "Section 2 - Category 2 Details",
+          paragraphs: [
+            "Details for Section 2 in Category 2 are provided here.",
+            "It outlines the performance across various students in this section.",
+            "Top performers: {{topPerformers}}", // Placeholder for top performers
+          ],
+        },
+        3: {
+          title: "Section 3 - Category 2 Details",
+          paragraphs: [
+            "Details for Section 3 in Category 2 are provided here.",
+            "It highlights various metrics related to student performance.",
+            "Top performers: {{topPerformers}}", // Placeholder for top performers
+          ],
+        },
+      },
+    };
     
-    pdf.addImage(blueTab, "PNG", 13, startY - 8, headingImageWidth, headingImageHeight);
+      const addCategoryTable = (
+        category: "Category 1" | "Category 2",
+        sectionNumber: 0 | 1 | 2 | 3,
+        startY: number
+      ) => {
+        // Ensure font settings are correct
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "normal");
+      
+        // Get the static text for the category and section
+        const staticText = staticTexts[category][sectionNumber];
+        startY += 6;  // Add space after static text for the next element
+        
+        pdf.addImage(blueTab, "PNG", 13, startY - 8, headingImageWidth, headingImageHeight);
 
-    pdf.text(staticText, 80, startY - 2.5);  // Render static text at the correct position
-    // pdf.text(sectionTitle, 80, startY - 2);
-    startY += 5;
-  
-    const sectionKey = `section${sectionNumber}Marks` as keyof UserScore;
-  
-    const sectionRows = fetchedData?.scores
-      .filter((score) => score.category === category)
-      .sort((a, b) => {
-        const aValue = a[sectionKey] as number;
-        const bValue = b[sectionKey] as number;
-        return bValue - aValue;
-      })
-      .map((score) => {
-        // For section 0, display Total Marks, for other sections display Section Marks
-        const sectionMarks = sectionNumber === 0 ? score.totalMarks : score[sectionKey];
-        return {
-          username: score.username,
-          studentName: score.studentName,
-          marks: sectionMarks,
-        };
+        pdf.text(staticText, 80, startY - 2.5);  // Render static text at the correct position
+        // pdf.text(sectionTitle, 80, startY - 2);
+        startY += 5;
+      
+        const sectionKey = `section${sectionNumber}Marks` as keyof UserScore;
+      
+        const sectionRows = fetchedData?.scores
+        .filter((score) => score.category === category)
+        .sort((a, b) => {
+          const aValue = a[sectionKey] as number;
+          const bValue = b[sectionKey] as number;
+          return bValue - aValue;
+        })
+        .map((score) => {
+          const sectionMarks = sectionNumber === 0 ? score.totalMarks : score[sectionKey];
+          return {
+            username: score.username,
+            studentName: score.studentName,
+            marks: sectionMarks,
+          };
+        }) || []; 
+      
+      const topPerformers = sectionRows.slice(0, 3).map((row) => row.studentName).join(", ") || "N/A";
+
+      const updatedParagraphs = staticTexts1.paragraphs.map((paragraph:string) =>
+        paragraph.replace("{{topPerformers}}", topPerformers)
+      );
+    
+      // Render the updated paragraphs on the PDF
+      updatedParagraphs.forEach((paragraph, index) => {
+        pdf.text(paragraph, 80, startY + (index * 6));  // Adjust Y position for each paragraph
       });
-  
-    // Create the table in the PDF
-    pdf.autoTable({
-      columns: [
-        { header: "Username", dataKey: "username" },
-        { header: "Student Name", dataKey: "studentName" },
-        { header: sectionNumber === 0 ? "Total Marks" : `Section ${sectionNumber} Marks`, dataKey: "marks" },
-      ],
-      body: sectionRows || [],
-      startY,
-      theme: "striped",
-      headStyles: {
-        fillColor: [47, 132, 195],
-        textColor: [255, 255, 255],
-      },
-      styles: {
-        fillColor: [255, 255, 255],
-        textColor: [0, 0, 0],
-      },
-      alternateRowStyles: {
-        fillColor: [202, 220, 249],
-      },
-      margin: { left: 14, right: 14 },
-    });
-  
-    // Update startY after table rendering
     startY = pdf.lastAutoTable.finalY + 10;
-  
-    // Render section stats (rank and average) after the table
+    
     if (schoolRankingInfo) {
       pdf.setFontSize(10);
   
