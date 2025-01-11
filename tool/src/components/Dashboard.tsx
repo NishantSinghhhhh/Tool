@@ -631,13 +631,11 @@ const Dashboard: React.FC = () => {
           <TableComponent
             category="Category 2"
             section="Total"
-            frequencyData={category2}  // Pass the frequency data for Category 2
-            sectionKey="totalMarks"  // Key for Total Marks in Category 2
-            fetchedData={{ ...fetchedData, scores: category2Scores }}  // Ensure the fetched data contains the scores for Category 2
-            calculatePercentile={calculatePercentile}  // Function to calculate percentiles
+            frequencyData={category2}  
+            sectionKey="totalMarks"  
+            fetchedData={{ ...fetchedData, scores: category2Scores }}  
+            calculatePercentile={calculatePercentile} 
           />
-
-          {/* Tables for Category 2 */}
           <TableComponent
             category="Category 2"
             section="Section 1"
