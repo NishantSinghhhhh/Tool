@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 const mongo_url = process.env.MONGO_CONN;
-const dbName = 'test';
+const dbName = 'schools';
 
 const schools = [
     "APS BARRACKPORE",
@@ -220,7 +220,15 @@ export const SchoolRanking = async (req, res) => {
         results.forEach((school, index) => {
             school.rank = index + 1;
         });
+        results.sort((a, b) => b.category1Average - a.category1Average);
+        results.forEach((school, index) => {
+            school.category1Rank = index + 1;
+        });
 
+        results.sort((a, b) => b.category2Average - a.category2Average);
+        results.forEach((school, index) => {
+            school.category2Rank = index + 1;
+        });
         results.sort((a, b) => b.section1Average - a.section1Average);
         results.forEach((school, index) => {
             school.section1Rank = index + 1;
@@ -265,6 +273,7 @@ export const SchoolRanking = async (req, res) => {
         results.forEach((school, index) => {
             school.category2Section3Rank = index + 1;
         });
+
 
         console.log("Final Results:", results);
 
