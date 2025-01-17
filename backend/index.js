@@ -34,11 +34,10 @@ app.get('/', (req, res) => {
     res.json("PONG");
 });
 
-// Use Routes
+
 app.use('/result', resultRoute);
 app.use('/datatoJson', DataToJson);
 
-// Global error handling
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.setHeader('Access-Control-Allow-Origin', process.env.BASE_URL); // Ensure this matches frontend URL
@@ -48,7 +47,6 @@ app.use((err, req, res, next) => {
     next();
 });
 
-// Start the Server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

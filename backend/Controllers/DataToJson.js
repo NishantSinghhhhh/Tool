@@ -427,3 +427,114 @@ export const SchoolFrequecny = async (req, res) => {
         await client.close();
     }
 };
+
+export const AllSchool = async (req, res) => {
+    console.log("Request received at AllSchool endpoint");
+
+    if (!mongo_url) {
+        console.error("MongoDB connection string is missing");
+        return res.status(500).json({
+            success: false,
+            message: "MongoDB configuration error",
+        });
+    }
+
+    const client = new MongoClient(mongo_url);
+
+    try {
+        await client.connect();
+        const db = client.db(dbName);
+        const usersCollection = db.collection("users");
+        const answersCollection = db.collection("answers");
+
+        const users = await usersCollection.find({}).toArray();
+
+        let totalMarks = 0, section1Marks = 0, section2Marks = 0, section3Marks = 0;
+        let category1Marks = 0, category2Marks = 0;
+        let category1Section1Marks = 0, category1Section2Marks = 0, category1Section3Marks = 0;
+        let category2Section1Marks = 0, category2Section2Marks = 0, category2Section3Marks = 0;
+
+        let totalUsers = 0, category1Count = 0, category2Count = 0;
+
+        for (const user of users) {
+            const userAnswers = await answersCollection.findOne({ username: user.username });
+
+            if (!userAnswers || !userAnswers.answers) continue;
+
+            const correctSet = answer.find((a) => a.setId === user.setid);
+            if (!correctSet) continue;
+
+            const correctAnswers = correctSet.answers;
+            let userTotalMarks = 0, userSection1Marks = 0, userSection2Marks = 0, userSection3Marks = 0;
+
+            for (const [question, correctAnswer] of Object.entries(correctAnswers)) {
+                const questionNumber = parseInt(question, 10);
+                const userAnswer = userAnswers.answers[question];
+
+                if (!userAnswer || userAnswer.trim() === "") continue;
+
+                const isCorrect = userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+                const marks = isCorrect ? 4 : -1;
+
+                userTotalMarks += marks;
+
+                if (questionNumber >= 1 && questionNumber <= 10) {
+                    userSection1Marks += marks;
+                } else if (questionNumber >= 11 && questionNumber <= 20) {
+                    userSection2Marks += marks;
+                } else if (questionNumber >= 21 && questionNumber <= 25) {
+                    userSection3Marks += marks;
+                }
+            }
+
+            totalMarks += userTotalMarks;
+            section1Marks += userSection1Marks;
+            section2Marks += userSection2Marks;
+            section3Marks += userSection3Marks;
+            totalUsers++;
+
+            if (user.setid.startsWith("67")) {
+                category1Marks += userTotalMarks;
+                category1Section1Marks += userSection1Marks;
+                category1Section2Marks += userSection2Marks;
+                category1Section3Marks += userSection3Marks;
+                category1Count++;
+            } else if (user.setid.startsWith("89")) {
+                category2Marks += userTotalMarks;
+                category2Section1Marks += userSection1Marks;
+                category2Section2Marks += userSection2Marks;
+                category2Section3Marks += userSection3Marks;
+                category2Count++;
+            }
+        }
+
+        const averages = {
+            totalAverage: totalUsers > 0 ? totalMarks / totalUsers : 0,
+            section1Average: totalUsers > 0 ? section1Marks / totalUsers : 0,
+            section2Average: totalUsers > 0 ? section2Marks / totalUsers : 0,
+            section3Average: totalUsers > 0 ? section3Marks / totalUsers : 0,
+            category1Average: category1Count > 0 ? category1Marks / category1Count : 0,
+            category1Section1Average: category1Count > 0 ? category1Section1Marks / category1Count : 0,
+            category1Section2Average: category1Count > 0 ? category1Section2Marks / category1Count : 0,
+            category1Section3Average: category1Count > 0 ? category1Section3Marks / category1Count : 0,
+            category2Average: category2Count > 0 ? category2Marks / category2Count : 0,
+            category2Section1Average: category2Count > 0 ? category2Section1Marks / category2Count : 0,
+            category2Section2Average: category2Count > 0 ? category2Section2Marks / category2Count : 0,
+            category2Section3Average: category2Count > 0 ? category2Section3Marks / category2Count : 0,
+        };
+
+        res.status(200).json({
+            success: true,
+            message: "Averages calculated successfully",
+            averages,
+        });
+    } catch (err) {
+        console.error("Error processing request:", err);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    } finally {
+        await client.close();
+    }
+};

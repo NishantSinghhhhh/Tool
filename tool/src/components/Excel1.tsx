@@ -41,7 +41,21 @@ function Excel() {
     e.preventDefault();
     setError(null);
     setSuccess(false);
-
+    const staticTexts = {
+      "Category 1": {
+        0: "Total Marks for Category 1",
+        1: "Section 1 - Category 1 Details",
+        2: "Section 2 - Category 1 Details",
+        3: "Section 3 - Category 1 Details",
+      },
+      "Category t2": {
+        0: "Total Marks for Category 2",
+        1: "Section 1 - Category 2 Details",
+        2: "Section 2 - Category 2 Details",
+        3: "Section 3 - Category 2 Details",
+      }
+    };
+      
     try {
       const response = await fetch("http://localhost:7009/result/submit", {
         method: "POST",
