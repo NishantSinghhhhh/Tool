@@ -11,8 +11,7 @@ import TableComponent from "./Dashboard/Table.tsx";
 import ScoresTable from "./Dashboard/ScoreTable.tsx";
 import { schoolAverageData } from "../data/schoolAverage.ts";
 import CustomPieChart from "../charts/pieChart.tsx";
-import BarGraph from "../charts/BarGraph.tsx";
-import renderToImage from './renderToImage'
+
 interface TableConfig {
   pdf: any;
   blueTab: string;
@@ -146,137 +145,68 @@ const Dashboard: React.FC = () => {
     }
   }, [username]);
 
-  const generateCategoryTables = async (
-    fetchedData: BackendResponse | null | undefined,
-    schoolRankingInfo: any,
-    config: TableConfig
-  ): Promise<number> => {
-    if (!fetchedData || !fetchedData.scores) {
-      console.error("No valid data available to generate tables");
-      return 0;
-    }
-  
-    const { pdf, blueTab, headingImageWidth, headingImageHeight } = config;
-    let startY = 10;
-  
-    const renderChart = async (
-      category: "Category 1" | "Category 2",
-      section: number,
-      frequencyData: Record<string, number>,
-      currentY: number,
-      pdf: any
-    ): Promise<number> => {
-      try {
-        const sectionKey: "totalMarks" | "section1Marks" | "section2Marks" | "section3Marks" = 
-          section === 0 ? "totalMarks" : `section${section}Marks` as "section1Marks" | "section2Marks" | "section3Marks";
+
+const generateCategoryTables = (
+  fetchedData: BackendResponse | null | undefined,
+  schoolRankingInfo: any,
+  config: TableConfig
+): number => {
+  // Early return if data is invalid
+  if (!fetchedData || !fetchedData.scores) {
+    console.error("No valid data available to generate tables");
+    return 0;
+  }
+
+  const { pdf, blueTab, headingImageWidth, headingImageHeight } = config;
+  let startY = 10;
+
+  const renderSingleTable = (
+    category: "Category 1" | "Category 2",
+    sectionNumber: 0 | 1 | 2 | 3,
+    frequencyData: Record<string, number>,
+    currentY: number
+  ): number => {
     
-        const chartComponent = (
-          <div style={{ width: '600px', height: '400px', background: 'white' }}>
-            <BarGraph
-              category={category}
-              section={section === 0 ? "Total" : `Section ${section}`}
-              frequencyData={frequencyData}
-              sectionKey={sectionKey}
-              fetchedData={fetchedData}
-            />
-          </div>
-        );
+    const sectionKey = `section${sectionNumber}Marks` as keyof UserScore;
+    const sectionRows = fetchedData.scores
+    .filter((score) => score.category === category)
+    .sort((a, b) => {
+      const aValue = a[sectionKey] as number;
+      const bValue = b[sectionKey] as number;
+      return bValue - aValue;
+    })
+    .map((score) => {
+      const sectionMarks = sectionNumber === 0 ? score.totalMarks : score[sectionKey] as number;
+      const percentile = calculatePercentile(frequencyData, sectionMarks);
+      return {
+        username: score.username,
+        studentName: score.studentName,
+        marks: sectionMarks,
+        percentile: percentile.toFixed(2) + "%"
+      };
+    });
     
-        // Get chart image
-        const chartImage = await renderToImage(chartComponent);
-        
-        // Calculate dimensions
-        const pageWidth = pdf.internal.pageSize.width;
-        const chartWidth = pageWidth * 0.8; // 80% of page width
-        const chartHeight = (chartWidth * 2) / 3; // Maintain aspect ratio
-        const chartX = (pageWidth - chartWidth) / 2;
-        
-        // Add some padding before the chart
-        currentY += 10;
-    
-        // Check if chart will fit on current page
-        if (currentY + chartHeight > pdf.internal.pageSize.height - 20) {
-          pdf.addPage();
-          currentY = 20;
-        }
-    
-        // Add chart to PDF with error handling
-        try {
-          pdf.addImage(
-            chartImage,
-            'PNG',
-            chartX,
-            currentY,
-            chartWidth,
-            chartHeight,
-            `chart-${category}-${section}`, // Unique ID for each chart
-            'FAST'
-          );
-          
-          // Return new Y position
-          return currentY + chartHeight + 15; // Add padding after chart
-        } catch (error) {
-          console.error('Error adding chart to PDF:', error);
-          return currentY + 10; // Return current position if chart fails
-        }
-      } catch (error) {
-        console.error('Error in renderChart:', error);
-        return currentY; // Return current position if entire process fails
-      }
-    };
-  
-    const renderSingleTable = async (
-      category: "Category 1" | "Category 2",
-      sectionNumber: 0 | 1 | 2 | 3,
-      frequencyData: Record<string, number>,
-      currentY: number
-    ): Promise<number> => {
-      const sectionKey = `section${sectionNumber}Marks` as keyof UserScore;
-      const sectionRows = fetchedData.scores
-        .filter((score) => score.category === category)
-        .sort((a, b) => {
-          const aValue = a[sectionKey] as number;
-          const bValue = b[sectionKey] as number;
-          return bValue - aValue;
-        })
-        .map((score) => {
-          const sectionMarks = sectionNumber === 0 ? score.totalMarks : score[sectionKey] as number;
-          const percentile = calculatePercentile(frequencyData, sectionMarks);
-          return {
-            username: score.username,
-            studentName: score.studentName,
-            marks: sectionMarks,
-            percentile: percentile.toFixed(2) + "%"
-          };
-        });
       
       pdf.setFontSize(12);
       pdf.setFont("helvetica", "normal");
-      
       const staticTexts = {
         "Category 1": {
           0: "Total Marks for Category 1",
-          1: "Section 1 - Category 1 Details [Logical Reasoning]",
-          2: "Section 2 - Category 1 Details [Critical Thinking]",
-          3: "Section 3 - Category 1 Details [Basic Programming]",
+          1: "Section 1 - Category 1 Details",
+          2: "Section 2 - Category 1 Details",
+          3: "Section 3 - Category 1 Details",
         },
         "Category 2": {
           0: "Total Marks for Category 2",
-          1: "Section 1 - Category 2 Details [Logical Reasoning]",
-          2: "Section 2 - Category 2 Details [Critical Thinking]",
-          3: "Section 3 - Category 2 Details [Basic Programming]",
+          1: "Section 1 - Category 2 Details",
+          2: "Section 2 - Category 2 Details",
+          3: "Section 3 - Category 2 Details",
         }
       };
-  
       const staticText = staticTexts[category][sectionNumber];
       currentY += 6;
       pdf.addImage(blueTab, "PNG", 14, currentY - 8, headingImageWidth, headingImageHeight);
-      
-      if (staticText === "Total Marks for Category 1" || staticText === "Total Marks for Category 2") {
-        pdf.text(staticText, 80, currentY - 2.5);
-      } else {
-        pdf.text(staticText, 60, currentY - 2.5);
-      }
+      pdf.text(staticText, 80, currentY - 2.5);
       currentY += 5;
       
       pdf.autoTable({
@@ -290,23 +220,24 @@ const Dashboard: React.FC = () => {
         startY: currentY,
         theme: "striped",
         headStyles: {
-          fillColor: [204, 218, 255],
-          textColor: [0, 0, 0],
-          fontStyle: "bold",
-          halign: "left",
+          fillColor: [204, 218, 255], // Bright blue header
+          textColor: [0, 0, 0], // White text
+          fontStyle: "bold", // Bold header font
+          halign: "left", // Center alignment for header text
         },
         styles: {
-          font: "helvetica",
-          fontSize: 10,
-          textColor: [0, 0, 0],
-          lineWidth: 0.5,
-          lineColor: [234, 234, 234],
+          font: "helvetica", // Consistent font
+          fontSize: 10, // Adjust font size
+          textColor: [0, 0, 0], // Black text for rows
+          lineWidth: 0.5, // Border thickness
+          lineColor: [234, 234, 234], // Light gray borders
         },
         alternateRowStyles: {
-          fillColor: [247, 247, 247],
+          fillColor: [247, 247, 247], // Light gray for alternate rows
         },
-        margin: { left: 14, right: 14 },
+        margin: { left: 14, right: 14 }, // Consistent table margin
       });
+      
       
       currentY = pdf.lastAutoTable.finalY + 10;
       
@@ -314,15 +245,15 @@ const Dashboard: React.FC = () => {
         const stats = {
           "Category 1": {
             0: { rank: schoolRankingInfo.category1Rank, average: schoolRankingInfo.category1Average, NormalisedMarks: averages.section1Average.toFixed(2) },
-            1: { rank: schoolRankingInfo.category1Section1Rank, average: schoolRankingInfo.category1Section1Average, NormalisedMarks: averages.category1Section1Average.toFixed(2) },
-            2: { rank: schoolRankingInfo.category1Section2Rank, average: schoolRankingInfo.category1Section2Average, NormalisedMarks: averages.category1Section2Average.toFixed(2) },
-            3: { rank: schoolRankingInfo.category1Section3Rank, average: schoolRankingInfo.category1Section3Average, NormalisedMarks: averages.category1Section3Average.toFixed(2) },
+            1: { rank: schoolRankingInfo.category1Section1Rank, average: schoolRankingInfo.category1Section1Average,  NormalisedMarks: averages.category1Section1Average.toFixed(2) },
+            2: { rank: schoolRankingInfo.category1Section2Rank, average: schoolRankingInfo.category1Section2Average,  NormalisedMarks: averages.category1Section2Average.toFixed(2) },
+            3: { rank: schoolRankingInfo.category1Section3Rank, average: schoolRankingInfo.category1Section3Average,  NormalisedMarks: averages.category1Section3Average.toFixed(2) },
           },
           "Category 2": {
-            0: { rank: schoolRankingInfo.category2Rank, average: schoolRankingInfo.category2Average, NormalisedMarks: averages.category2Average.toFixed(2) },
-            1: { rank: schoolRankingInfo.category2Section1Rank, average: schoolRankingInfo.category2Section1Average, NormalisedMarks: averages.category2Section1Average.toFixed(2) },
-            2: { rank: schoolRankingInfo.category2Section2Rank, average: schoolRankingInfo.category2Average, NormalisedMarks: averages.category2Section2Average.toFixed(2) },
-            3: { rank: schoolRankingInfo.category2Section3Rank, average: schoolRankingInfo.category2Section3Average, NormalisedMarks: averages.category2Section2Average.toFixed(2) },
+            0: { rank: schoolRankingInfo.category2Rank, average: schoolRankingInfo.category2Average ,  NormalisedMarks: averages.category2Average.toFixed(2)},
+            1: { rank: schoolRankingInfo.category2Section1Rank, average: schoolRankingInfo.category2Section1Average ,  NormalisedMarks: averages.category2Section1Average.toFixed(2)},
+            2: { rank: schoolRankingInfo.category2Section2Rank, average: schoolRankingInfo.category2Average,  NormalisedMarks: averages.category2Section2Average.toFixed(2) },
+            3: { rank: schoolRankingInfo.category2Section3Rank, average: schoolRankingInfo.category2Section3Average,  NormalisedMarks: averages.category2Section2Average.toFixed(2) },
           },
         };
         
@@ -335,21 +266,10 @@ const Dashboard: React.FC = () => {
         pdf.text(`School's Average: ${currentStats.average.toFixed(2)}`, 144, rankY);
         currentY += headingImageHeight + 8;
       }
-  
-      // Add chart below the table and stats
-      const renderChart: (
-        category: "Category 1" | "Category 2",
-        section: number,
-        frequencyData: Record<string, any>,
-        currentY: number,
-        pdf?: any // Optional
-      ) => Promise<any> = async (category, section, frequencyData, currentY, pdf) => {
-        // Function logic here
-      };
       
       return currentY;
     };
-  
+    
     const categories: Array<["Category 1" | "Category 2", number, any]> = [
       ["Category 1", 0, category1],
       ["Category 1", 1, category1Section1Marks],
@@ -360,36 +280,24 @@ const Dashboard: React.FC = () => {
       ["Category 2", 2, category2Section2Marks],
       ["Category 2", 3, category2Section3Marks],
     ];
-  
-    // Process categories sequentially using for...of to handle async operations
-    for (const [index, [category, section, frequencyData]] of categories.entries()) {
-      if (
-        (category === "Category 1" && section === 3 && frequencyData === category1Section3Marks) ||
-        (category === "Category 2" && section === 2 && frequencyData === category2Section2Marks)
-      ) {
-        pdf.addPage();
-        startY = 20;
-      }
-  
-      // Wait for the table and chart to render
-      startY = await renderSingleTable(
-        category, 
-        section as 0 | 1 | 2 | 3, 
-        frequencyData, 
-        startY
-      );
-  
-      // Check if we need a new page
-      if (startY > pdf.internal.pageSize.height - 100) {
-        pdf.addPage();
-        startY = 20;
-      }
-  
-      startY += index === 5 ? 20 : 5;
+    
+  categories.forEach(([category, section, frequencyData], index) => {
+
+    if (category === "Category 1" && section === 3 && frequencyData === category1Section3Marks) {
+      pdf.addPage();
+      startY = 20; // Reset startY for the new page
+    }
+    else if (category === "Category 2" && section === 2 && frequencyData === category2Section2Marks) {
+      pdf.addPage();
+      startY = 20; // Reset startY for the new page
     }
   
-    return startY;
-  };
+    // Render the table
+    startY = renderSingleTable(category, section as 0 | 1 | 2 | 3, frequencyData, startY);
+    startY += index === 5 ? 20 : 5;
+  });
+  return startY;
+};
 
   const handleFetchDetails = async () => {
     if (!schoolName || schoolName.trim() === "") {
@@ -601,17 +509,17 @@ const Dashboard: React.FC = () => {
       pdf.setTextColor(0, 0, 0);
       pdf.text(`Overall Rank: ${schoolRankingInfo.rank}`, 20, textY);
       pdf.text(`Normalised Average: ${averages.totalAverage.toFixed()}`, 75, textY);
-      pdf.text(`School's Average: ${schoolRankingInfo.averageMarks.toFixed(2)}`, 144, textY);
+      pdf.text(`Average Marks: ${schoolRankingInfo.averageMarks.toFixed(2)}`, 144, textY);
     }
     
     startY += headingImageHeight + 10;
     
     const bulletPoints = [
-    "* Normalized Average: The normalized average represents the average marks calculated by considering the performance of all students who participated, ensuring a fair comparison.",
-    "* School's Average: The school's average is calculated as the average marks of all students who participated from your school, reflecting their collective performance.",
-    "The Round 1 quiz highlighted students' exceptional talent, creativity, and problem-solving abilities, showcasing their enthusiasm for academic excellence.",
-    "The results reflected a diverse range of strengths, emphasizing the competitive spirit and dedication of the participants.",
-    "These achievements underscore the immense potential and bright futures awaiting these young minds as they continue to grow and succeed."
+      "The Round 1 quiz showcased incredible talent and enthusiasm among students, reflecting their dedication to academic excellence.",
+      "Each participant demonstrated remarkable effort, creativity, and problem-solving abilities.",
+      "The results highlighted the diversity of strengths across categories and underlined the competitive spirit of the students.",
+      "These performances serve as a reminder of the bright future awaiting these young minds as they grow and excel.",
+      "These achievements highlight the promising future that lies ahead for these young individuals as they continue to grow and succeed."
     ];
     
     pdf.setFontSize(12);
@@ -619,13 +527,10 @@ const Dashboard: React.FC = () => {
     
     const textWidth = 170;
     const bulletIndent = 10;
-
-    bulletPoints.forEach((point, index) => {
-    const lines = pdf.splitTextToSize(point, textWidth - bulletIndent);
-      
-      const bullet = index < 2 ? "" : "•";
-
-      pdf.text(bullet, 14, startY);
+    bulletPoints.forEach((point) => {
+      const lines = pdf.splitTextToSize(point, textWidth - bulletIndent);
+    
+      pdf.text("•", 14, startY);
       pdf.text(lines, 20, startY);
     
       startY += lines.length * 6;
@@ -694,7 +599,7 @@ const Dashboard: React.FC = () => {
   <div>
 
     </div>
-    <div className="h-[100vh]  bg-gray-50">
+    <div className="h-[100vh] hidden bg-gray-50">
       {/* Tables for Category 1 */}
       {fetchedData && (
         <>
@@ -706,28 +611,13 @@ const Dashboard: React.FC = () => {
             fetchedData={{ ...fetchedData, scores: category1Scores }}
             calculatePercentile={calculatePercentile}
           />
-
-          <BarGraph
-            category="Category 1"
-            section="Total"
-            frequencyData={category1}
-            sectionKey="totalMarks"
-            fetchedData={fetchedData}
-          />
-                <TableComponent
+          <TableComponent
             category="Category 1"
             section="Section 1"
             frequencyData={category1Section1Marks}
             sectionKey="section1Marks"
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
-          />
-                <BarGraph
-            category="Category 1"
-            section="Section 1"
-            frequencyData={category1Section1Marks}
-            sectionKey="section1Marks"
-            fetchedData={fetchedData}
           />
           <TableComponent
             category="Category 1"
@@ -736,13 +626,6 @@ const Dashboard: React.FC = () => {
             sectionKey="section2Marks"
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
-          />
-          <BarGraph
-            category="Category 1"
-            section="Section 2"
-            frequencyData={category1Section2Marks}
-            sectionKey="section2Marks"
-            fetchedData={fetchedData}
           />
           <TableComponent
             category="Category 1"
@@ -753,13 +636,6 @@ const Dashboard: React.FC = () => {
             calculatePercentile={calculatePercentile}
           />
 
-          <BarGraph
-            category="Category 1"
-            section="Section 3"
-            frequencyData={category1Section3Marks}
-            sectionKey="section3Marks"
-            fetchedData={fetchedData}
-          />
           <TableComponent
             category="Category 2"
             section="Total"
@@ -768,13 +644,6 @@ const Dashboard: React.FC = () => {
             fetchedData={{ ...fetchedData, scores: category2Scores }}  
             calculatePercentile={calculatePercentile} 
           />
-          <BarGraph
-            category="Category 2"
-            section="Total"
-            frequencyData={category2}  
-            sectionKey="totalMarks"  
-            fetchedData={fetchedData} 
-          />
           <TableComponent
             category="Category 2"
             section="Section 1"
@@ -782,13 +651,6 @@ const Dashboard: React.FC = () => {
             sectionKey="section1Marks"
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
-          />
-          <BarGraph
-            category="Category 2"
-            section="Section 1"
-            frequencyData={category2Section1Marks}
-            sectionKey="section1Marks"
-            fetchedData={fetchedData}
           />
           <TableComponent
             category="Category 2"
@@ -798,14 +660,6 @@ const Dashboard: React.FC = () => {
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
           />
-          <BarGraph
-            category="Category 2"
-            section="Section 2"
-            frequencyData={category2Section2Marks}
-            sectionKey="section2Marks"
-            fetchedData={fetchedData}
-          
-          />
           <TableComponent
             category="Category 2"
             section="Section 3"
@@ -813,29 +667,11 @@ const Dashboard: React.FC = () => {
             sectionKey="section3Marks"
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
-          />
-          <BarGraph
-            category="Category 2"
-            section="Section 3"
-            frequencyData={category2Section3Marks}
-            sectionKey="section3Marks"
-            fetchedData={fetchedData}
-         
           />
         </>
       )}
     </div>
-    <div className="bg-white">
-      <h1>Pie Chart Example</h1>
-      {/* <CustomPieChart
-        category="Category 2"
-        section="Section 3"
-        frequencyData={category2Section3Marks}
-        sectionKey="section3Marks"
-        fetchedData={fetchedData}
-      /> */}
-    {/* <BarGraph/> */}
-    </div>
+   
     </div>
   );
 };
