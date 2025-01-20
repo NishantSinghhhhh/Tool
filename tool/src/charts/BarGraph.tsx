@@ -132,8 +132,8 @@ const BarGraph: React.FC<BarGraphProps> = ({
         {
           label: `Normalised Average`,
           data: Array(topStudents.length).fill(averageScore),
-          backgroundColor: 'rgba(255, 159, 64, 0.7)',
-          borderColor: 'rgba(255, 159, 64, 1)',
+          backgroundColor: 'rgb(126,198,244)',
+          borderColor: 'rgb(39,89,154)',
           borderWidth: 1,
           datalabels: {
             align: 'end',
@@ -143,8 +143,8 @@ const BarGraph: React.FC<BarGraphProps> = ({
         {
           label: `Student Score`,
           data: topStudents.map(student => student[sectionKey]),
-          backgroundColor: 'rgba(75, 192, 192, 0.7)',
-          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(205,218,254,255)',
+          borderColor: 'rgb(39,89,154)',
           borderWidth: 1,
           datalabels: {
             align: 'end',
@@ -154,8 +154,8 @@ const BarGraph: React.FC<BarGraphProps> = ({
         {
           label: `Maximum Score`,
           data: Array(topStudents.length).fill(maxScore),
-          backgroundColor: 'rgba(153, 102, 255, 0.7)',
-          borderColor: 'rgba(153, 102, 255, 1)',
+          backgroundColor: 'rgba(62,129,203,255)',
+          borderColor: 'rgb(39,89,154)',
           borderWidth: 1,
           datalabels: {
             align: 'end',
@@ -219,7 +219,7 @@ const BarGraph: React.FC<BarGraphProps> = ({
     };
   
     return (
-      <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 mt-10">
+      <div className="w-full max-w-7xl mx-auto bg-inherit rounded-xl p-6 mt-10">
         <div style={{ height: '500px' }}>
           <Bar data={data} options={options} />
         </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState , useRef} from "react";
 import { creds } from "../data/creds.ts";
 import { useAuth } from "../context/AuthContext.tsx";
 import jsPDF from "jspdf";
@@ -10,8 +10,10 @@ import Header from "./Dashboard/Header.tsx";
 import TableComponent from "./Dashboard/Table.tsx";
 import ScoresTable from "./Dashboard/ScoreTable.tsx";
 import { schoolAverageData } from "../data/schoolAverage.ts";
-import CustomPieChart from "../charts/pieChart.tsx";
-
+import BarGraph from "../charts/BarGraph.tsx";
+import domtoimage from 'dom-to-image-more';
+import { toPng } from 'html-to-image'; 
+import { PDFDocument } from 'pdf-lib';
 interface TableConfig {
   pdf: any;
   blueTab: string;
@@ -75,6 +77,117 @@ interface SchoolRankingData {
   category2Section2Rank: number;
   category2Section3Rank: number;
 }
+// Define interfaces for our data structure
+interface SectionContent {
+  title: string;
+  points: string[];
+}
+
+interface CategorySections {
+  [key: number]: SectionContent;
+}
+
+type StaticTextsType = {
+  "Category 1": CategorySections;
+  "Category 2": CategorySections;
+}
+const staticTexts: StaticTextsType = {
+  "Category 1": {
+    0: {
+      title: "Total Marks for Category 1",
+      points: [
+        "Total Marks for this section: 100",
+        "Overall performance across all sections",
+        "This section is essential for building a strong analytical foundation that supports advanced learning and technical skill development."
+      ]
+    },
+    1: {
+      title: "Section 1 - Category 1 Details [Logical Reasoning]",
+      points: [
+        "Logical Reasoning assesses a student's ability to approach problems methodically. It focuses on identifying patterns, sequences, and relationships to make sound judgments and solve challenges effectively.",
+        "Total Marks for this section: 40",
+        "Assessment of analytical and problem-solving abilities",
+        "This section helps students enhance their logical thinking skills, which are crucial for solving problems in academics and real-life situations."
+      ]
+    },
+    2: {
+      title: "Section 2 - Category 1 Details [Critical Thinking]",
+      points: [
+        "Critical Thinking measures the student's ability to analyze situations, evaluate information critically, and make logical decisions. It includes assessing the validity of arguments, identifying biases, and applying structured reasoning to problem-solving.",
+        "Total Marks for this section: 40",
+        "Evaluation of complex problem analysis",
+        "This section equips students with the ability to make reasoned judgments and improve decision-making in various scenarios."
+      ]
+    },
+    3: {
+      title: "Section 3 - Category 1 Details [Basic Programming]",
+      points: [
+        "Basic Programming develops essential coding skills by introducing students to fundamental programming concepts such as syntax, logic, and algorithms. It emphasizes the importance of understanding how code operates, enabling students to create simple yet effective solutions to real-world problems.",
+        "Total Marks for this section: 20",
+        "Understanding of fundamental programming concepts",
+        "This section introduces students to the building blocks of programming, fostering an interest in technology and problem-solving."
+      ]
+    }
+  },
+  "Category 2": {
+    0: {
+      title: "Total Marks for Category 2",
+      points: [
+        "Total Marks for this section: 100",
+        "Cumulative performance across all advanced sections",
+        "This section prepares students to apply technical knowledge in competitive and real-world scenarios, enhancing their professional aptitude."
+      ]
+    },
+    1: {
+      title: "Section 1 - Category 2 Details [Logical Reasoning]",
+      points: [
+        "Advanced Logical Reasoning evaluates higher-order thinking and the ability to draw conclusions from complex patterns and abstract relationships. This section tests the application of logic to multifaceted problems.",
+        "Total Marks for this section: 40",
+        "Advanced logical reasoning capabilities",
+        "This section challenges students to think critically and apply logic to complex problems, improving their problem-solving skills in advanced contexts."
+      ]
+    },
+    2: {
+      title: "Section 2 - Category 2 Details [Critical Thinking]",
+      points: [
+        "Critical Thinking at an advanced level challenges students to analyze multi-layered problems, develop strategic solutions, and implement forward-thinking approaches. It involves evaluating intricate scenarios and applying robust decision-making skills.",
+        "Total Marks for this section: 40",
+        "Advanced problem-solving strategies",
+        "This section fosters the ability to evaluate complex situations and create strategic solutions, which are invaluable in professional environments."
+      ]
+    },
+    3: {
+      title: "Section 3 - Category 2 Details [Basic Programming]",
+      points: [
+        "Basic Programming at this advanced level focuses on equipping students with the ability to design efficient algorithms, write optimized code, and solve computationally challenging problems. It encourages innovative thinking, improves coding efficiency, and prepares students for complex technical projects.",
+        "Total Marks for this section: 20",
+        "Advanced programming concept understanding",
+        "This section is crucial for developing advanced technical skills and preparing students for competitive programming and real-world challenges."
+      ]
+    }
+  }
+};
+
+async function compressPDF(pdfBytes: Uint8Array): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.load(pdfBytes, { updateMetadata: false });
+
+  // Remove metadata
+  pdfDoc.setTitle('');
+  pdfDoc.setAuthor('');
+  pdfDoc.setSubject('');
+  pdfDoc.setKeywords([]);
+  pdfDoc.setProducer('');
+  pdfDoc.setCreator('');
+
+  // Save the compressed PDF
+  const compressedPdf = await pdfDoc.save({
+    useObjectStreams: true,  // Enable object stream compression
+    objectsPerTick: 20,      // Adjust compression level
+    updateFieldAppearances: true,
+  });
+
+  return compressedPdf;
+}
 
 const Dashboard: React.FC = () => {
   const { username } = useAuth();
@@ -93,6 +206,18 @@ const Dashboard: React.FC = () => {
   const category2Section1Marks = schoolFrequencyData.category2Section1Marks;
   const category2Section2Marks = schoolFrequencyData.category2Section2Marks;
   const category2Section3Marks = schoolFrequencyData.category2Section3Marks;
+
+
+  const barGraphRefs = [
+    useRef<HTMLDivElement | null>(null),
+    useRef<HTMLDivElement | null>(null),
+    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
+    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
+    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
+    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
+    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
+    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
+  ];
 
   const registerPoppins = (pdf: jsPDF) => {
     pdf.addFileToVFS("Poppins-Regular.ttf", Poppins);
@@ -146,159 +271,196 @@ const Dashboard: React.FC = () => {
   }, [username]);
 
 
-const generateCategoryTables = (
-  fetchedData: BackendResponse | null | undefined,
-  schoolRankingInfo: any,
-  config: TableConfig
-): number => {
-  // Early return if data is invalid
-  if (!fetchedData || !fetchedData.scores) {
-    console.error("No valid data available to generate tables");
-    return 0;
-  }
+  const generateCategoryTables = async (
+    fetchedData: BackendResponse | null | undefined,
+    schoolRankingInfo: any,
+    config: TableConfig,
+    barGraphRefs: React.MutableRefObject<HTMLDivElement | null>[]
+): Promise<number> => {
+    // Early return if data is invalid
+    if (!fetchedData || !fetchedData.scores) {
+      console.error("No valid data available to generate tables");
+      return 0;
+    }
+    const { pdf, blueTab, headingImageWidth, headingImageHeight } = config;
 
-  const { pdf, blueTab, headingImageWidth, headingImageHeight } = config;
-  let startY = 10;
+    const addGraphToPDF = async (
+        graphRef: React.RefObject<HTMLDivElement>,
+        currentY: number
+    ): Promise<number> => {
+        if (graphRef.current) {
+            try {
+                const dataUrl = await toPng(graphRef.current, {
+                    pixelRatio: 3,
+                });
 
-  const renderSingleTable = (
-    category: "Category 1" | "Category 2",
-    sectionNumber: 0 | 1 | 2 | 3,
-    frequencyData: Record<string, number>,
-    currentY: number
-  ): number => {
-    
-    const sectionKey = `section${sectionNumber}Marks` as keyof UserScore;
-    const sectionRows = fetchedData.scores
-    .filter((score) => score.category === category)
-    .sort((a, b) => {
-      const aValue = a[sectionKey] as number;
-      const bValue = b[sectionKey] as number;
-      return bValue - aValue;
-    })
-    .map((score) => {
-      const sectionMarks = sectionNumber === 0 ? score.totalMarks : score[sectionKey] as number;
-      const percentile = calculatePercentile(frequencyData, sectionMarks);
-      return {
-        username: score.username,
-        studentName: score.studentName,
-        marks: sectionMarks,
-        percentile: percentile.toFixed(2) + "%"
-      };
-    });
-    
-      
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "normal");
-      const staticTexts = {
-        "Category 1": {
-          0: "Total Marks for Category 1",
-          1: "Section 1 - Category 1 Details",
-          2: "Section 2 - Category 1 Details",
-          3: "Section 3 - Category 1 Details",
-        },
-        "Category 2": {
-          0: "Total Marks for Category 2",
-          1: "Section 1 - Category 2 Details",
-          2: "Section 2 - Category 2 Details",
-          3: "Section 3 - Category 2 Details",
+                const { offsetWidth, offsetHeight } = graphRef.current;
+                const imgWidth = 150;
+                const imgHeight = (offsetHeight / offsetWidth) * imgWidth;
+
+                pdf.addImage(dataUrl, 'PNG', 30, currentY -20, imgWidth, imgHeight);
+                return currentY + imgHeight + 10;
+            } catch (error) {
+                console.error('Error adding graph to PDF:', error);
+                return currentY;
+            }
         }
-      };
-      const staticText = staticTexts[category][sectionNumber];
-      currentY += 6;
-      pdf.addImage(blueTab, "PNG", 14, currentY - 8, headingImageWidth, headingImageHeight);
-      pdf.text(staticText, 80, currentY - 2.5);
-      currentY += 5;
-      
-      pdf.autoTable({
-        columns: [
-          { header: "Username", dataKey: "username" },
-          { header: "Student Name", dataKey: "studentName" },
-          { header: sectionNumber === 0 ? "Total Marks" : `Section ${sectionNumber} Marks`, dataKey: "marks" },
-          { header: "Percentile", dataKey: "percentile" },
-        ],
-        body: sectionRows,
-        startY: currentY,
-        theme: "striped",
-        headStyles: {
-          fillColor: [204, 218, 255], // Bright blue header
-          textColor: [0, 0, 0], // White text
-          fontStyle: "bold", // Bold header font
-          halign: "left", // Center alignment for header text
-        },
-        styles: {
-          font: "helvetica", // Consistent font
-          fontSize: 10, // Adjust font size
-          textColor: [0, 0, 0], // Black text for rows
-          lineWidth: 0.5, // Border thickness
-          lineColor: [234, 234, 234], // Light gray borders
-        },
-        alternateRowStyles: {
-          fillColor: [247, 247, 247], // Light gray for alternate rows
-        },
-        margin: { left: 14, right: 14 }, // Consistent table margin
-      });
-      
-      
-      currentY = pdf.lastAutoTable.finalY + 10;
-      
-      if (schoolRankingInfo) {
-        const stats = {
-          "Category 1": {
-            0: { rank: schoolRankingInfo.category1Rank, average: schoolRankingInfo.category1Average, NormalisedMarks: averages.section1Average.toFixed(2) },
-            1: { rank: schoolRankingInfo.category1Section1Rank, average: schoolRankingInfo.category1Section1Average,  NormalisedMarks: averages.category1Section1Average.toFixed(2) },
-            2: { rank: schoolRankingInfo.category1Section2Rank, average: schoolRankingInfo.category1Section2Average,  NormalisedMarks: averages.category1Section2Average.toFixed(2) },
-            3: { rank: schoolRankingInfo.category1Section3Rank, average: schoolRankingInfo.category1Section3Average,  NormalisedMarks: averages.category1Section3Average.toFixed(2) },
-          },
-          "Category 2": {
-            0: { rank: schoolRankingInfo.category2Rank, average: schoolRankingInfo.category2Average ,  NormalisedMarks: averages.category2Average.toFixed(2)},
-            1: { rank: schoolRankingInfo.category2Section1Rank, average: schoolRankingInfo.category2Section1Average ,  NormalisedMarks: averages.category2Section1Average.toFixed(2)},
-            2: { rank: schoolRankingInfo.category2Section2Rank, average: schoolRankingInfo.category2Average,  NormalisedMarks: averages.category2Section2Average.toFixed(2) },
-            3: { rank: schoolRankingInfo.category2Section3Rank, average: schoolRankingInfo.category2Section3Average,  NormalisedMarks: averages.category2Section2Average.toFixed(2) },
-          },
-        };
-        
-        pdf.setFontSize(12);
-        pdf.addImage(blueTab, "PNG", 13, currentY - 8, headingImageWidth, headingImageHeight);
-        const currentStats = stats[category][sectionNumber];
-        const rankY = currentY - 3;
-        pdf.text(`Section Rank: ${currentStats.rank}`, 20, rankY);
-        pdf.text(`Normalised Marks: ${currentStats.NormalisedMarks}`, 80, rankY);
-        pdf.text(`School's Average: ${currentStats.average.toFixed(2)}`, 144, rankY);
-        currentY += headingImageHeight + 8;
-      }
-      
-      return currentY;
+        return currentY;
     };
-    
-    const categories: Array<["Category 1" | "Category 2", number, any]> = [
-      ["Category 1", 0, category1],
-      ["Category 1", 1, category1Section1Marks],
-      ["Category 1", 2, category1Section2Marks],
-      ["Category 1", 3, category1Section3Marks],
-      ["Category 2", 0, category2],
-      ["Category 2", 1, category2Section1Marks],
-      ["Category 2", 2, category2Section2Marks],
-      ["Category 2", 3, category2Section3Marks],
+
+    const renderSingleTable = async (
+        category: "Category 1" | "Category 2",
+        sectionNumber: 0 | 1 | 2 | 3,
+        frequencyData: Record<string, number>,
+        graphRef: React.MutableRefObject<HTMLDivElement | null>
+    ): Promise<void> => {
+        let currentY = 20; // Start from top of new page
+
+        const sectionKey = `section${sectionNumber}Marks` as keyof UserScore;
+        const sectionRows = fetchedData.scores
+            .filter((score) => score.category === category)
+            .sort((a, b) => {
+                const aValue = a[sectionKey] as number;
+                const bValue = b[sectionKey] as number;
+                return bValue - aValue;
+            })
+            .map((score) => {
+                const sectionMarks = sectionNumber === 0 ? score.totalMarks : score[sectionKey] as number;
+                const percentile = calculatePercentile(frequencyData, sectionMarks);
+                return {
+                    username: score.username,
+                    studentName: score.studentName,
+                    marks: sectionMarks,
+                    percentile: percentile.toFixed(2) + "%"
+                };
+            });
+
+            const sectionContent = staticTexts[category][sectionNumber];
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "normal");
+        
+
+        currentY += 6;
+        pdf.addImage(blueTab, "PNG", 14, currentY - 8, headingImageWidth, headingImageHeight);
+        if (sectionContent.title === "Total Marks for Category 1" || sectionContent.title === "Total Marks for Category 2") {
+            pdf.text(sectionContent.title, 80, currentY - 2.5);
+        } else {
+            pdf.text(sectionContent.title, 60, currentY - 2.5);
+        }
+
+        currentY += 10;
+        pdf.autoTable({
+            columns: [
+                { header: "Username", dataKey: "username" },
+                { header: "Student Name", dataKey: "studentName" },
+                { header: sectionNumber === 0 ? "Total Marks" : `Section ${sectionNumber} Marks`, dataKey: "marks" },
+                { header: "Percentile", dataKey: "percentile" },
+            ],
+            body: sectionRows,
+            startY: currentY,
+            theme: "striped",
+            headStyles: {
+                fillColor: [204, 218, 255],
+                textColor: [0, 0, 0],
+                fontStyle: "bold",
+                halign: "left",
+            },
+            styles: {
+                font: "helvetica",
+                fontSize: 10,
+                textColor: [0, 0, 0],
+                lineWidth: 0.5,
+                lineColor: [234, 234, 234],
+            },
+            alternateRowStyles: {
+                fillColor: [247, 247, 247],
+            },
+            margin: { left: 14, right: 14 },
+        });
+
+        currentY = pdf.lastAutoTable.finalY + 10;
+
+        if (schoolRankingInfo) {
+            const stats = {
+                "Category 1": {
+                    0: { rank: schoolRankingInfo.category1Rank, average: schoolRankingInfo.category1Average, NormalisedMarks: averages.section1Average.toFixed(2) },
+                    1: { rank: schoolRankingInfo.category1Section1Rank, average: schoolRankingInfo.category1Section1Average, NormalisedMarks: averages.category1Section1Average.toFixed(2) },
+                    2: { rank: schoolRankingInfo.category1Section2Rank, average: schoolRankingInfo.category1Section2Average, NormalisedMarks: averages.category1Section2Average.toFixed(2) },
+                    3: { rank: schoolRankingInfo.category1Section3Rank, average: schoolRankingInfo.category1Section3Average, NormalisedMarks: averages.category1Section3Average.toFixed(2) },
+                },
+                "Category 2": {
+                    0: { rank: schoolRankingInfo.category2Rank, average: schoolRankingInfo.category2Average, NormalisedMarks: averages.category2Average.toFixed(2) },
+                    1: { rank: schoolRankingInfo.category2Section1Rank, average: schoolRankingInfo.category2Section1Average, NormalisedMarks: averages.category2Section1Average.toFixed(2) },
+                    2: { rank: schoolRankingInfo.category2Section2Rank, average: schoolRankingInfo.category2Average, NormalisedMarks: averages.category2Section2Average.toFixed(2) },
+                    3: { rank: schoolRankingInfo.category2Section3Rank, average: schoolRankingInfo.category2Section3Average, NormalisedMarks: averages.category2Section2Average.toFixed(2) },
+                },
+            };
+
+            pdf.setFontSize(12);
+            pdf.addImage(blueTab, "PNG", 13, currentY - 8, headingImageWidth, headingImageHeight);
+            const currentStats = stats[category][sectionNumber];
+            const rankY = currentY - 3;
+            pdf.text(`Section Rank: ${currentStats.rank}`, 20, rankY);
+            pdf.text(`Normalised Average: ${currentStats.NormalisedMarks}`, 80, rankY);
+            pdf.text(`School's Average: ${currentStats.average.toFixed(2)}`, 144, rankY);
+            currentY += headingImageHeight + 8;
+        }
+
+        // Add graph below the table
+        await addGraphToPDF(graphRef, currentY+10);
+
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "normal");
+        currentY += 115;
+       
+        const textWidth = 170; 
+        const bulletIndent = 10;
+        
+        sectionContent.points.forEach((point: string, index: number) => {
+            const lines = pdf.splitTextToSize(point, textWidth - bulletIndent);
+            const bullet = index < 2 ? "•" : "•";
+        
+            pdf.text(bullet, 14, currentY);
+            pdf.text(lines, 20, currentY);
+            currentY += lines.length * 6;
+        });
+    };
+
+    const categories: Array<[
+        "Category 1" | "Category 2",
+        number,
+        any,
+        React.MutableRefObject<HTMLDivElement | null>
+    ]> = [
+        ["Category 1", 0, category1, barGraphRefs[0]],
+        ["Category 1", 1, category1Section1Marks, barGraphRefs[1]],
+        ["Category 1", 2, category1Section2Marks, barGraphRefs[2]],
+        ["Category 1", 3, category1Section3Marks, barGraphRefs[3]],
+        ["Category 2", 0, category2, barGraphRefs[4]],
+        ["Category 2", 1, category2Section1Marks, barGraphRefs[5]],
+        ["Category 2", 2, category2Section2Marks, barGraphRefs[6]],
+        ["Category 2", 3, category2Section3Marks, barGraphRefs[7]],
     ];
-    
-  categories.forEach(([category, section, frequencyData], index) => {
 
-    if (category === "Category 1" && section === 3 && frequencyData === category1Section3Marks) {
-      pdf.addPage();
-      startY = 20; // Reset startY for the new page
+    // Render each table and graph on a new page
+    for (let i = 0; i < categories.length; i++) {
+        const [category, section, frequencyData, graphRef] = categories[i];
+        
+        // Add a new page for each table except the first one
+        if (i > 0) {
+            pdf.addPage();
+        }
+
+        await renderSingleTable(
+            category,
+            section as 0 | 1 | 2 | 3,
+            frequencyData,
+            graphRef
+        );
     }
-    else if (category === "Category 2" && section === 2 && frequencyData === category2Section2Marks) {
-      pdf.addPage();
-      startY = 20; // Reset startY for the new page
-    }
-  
-    // Render the table
-    startY = renderSingleTable(category, section as 0 | 1 | 2 | 3, frequencyData, startY);
-    startY += index === 5 ? 20 : 5;
-  });
-  return startY;
+
+    return pdf.internal.getCurrentPageInfo().pageNumber;
 };
-
   const handleFetchDetails = async () => {
     if (!schoolName || schoolName.trim() === "") {
       alert("School name is not valid.");
@@ -377,7 +539,7 @@ const generateCategoryTables = (
     }
   };
 
-  const generatePDF = () => {
+   const generatePDF = async() => {
     const pdf = new jsPDF("p", "mm", "a4");
     registerPoppins(pdf);
    
@@ -418,14 +580,14 @@ const generateCategoryTables = (
     pdf.setFontSize(12);
     const bulletPointIcon = "\u2022";
     
-    const firstLine = `${bulletPointIcon} This report consists of details of each category and each section, with the marks and the `;
-    const secondLine = ` percentile of the student.`;
+    const firstLine = `${bulletPointIcon} This report consists of details of each category and each section, with the marks and the`;
+    const secondLine = `percentile of the student.`;
     pdf.text(firstLine, 14, startY);
     startY += 7;
     pdf.text(secondLine, 18, startY);
     startY += 10;
     
-    const secondPointLine1 = `${bulletPointIcon} In each section, the average of the school and the rank of your school is being provided .`;
+    const secondPointLine1 = `${bulletPointIcon} In each section, the average of the school and the rank of your school is being provided.`;
     pdf.text(secondPointLine1, 14, startY);
     startY += 5;
     pdf.setFontSize(18);
@@ -453,7 +615,7 @@ const generateCategoryTables = (
     const mainTableColumns = [
       { header: "Username", dataKey: "username" },
       { header: "Student Name", dataKey: "studentName" },
-      { header: "Total Marks", dataKey: "totalMarks" },
+      { header: "Obtained Marks", dataKey: "totalMarks" },
       { header: "Percentile", dataKey: "percentile" },
       { header: "Category", dataKey: "category" },
     ];
@@ -509,39 +671,50 @@ const generateCategoryTables = (
       pdf.setTextColor(0, 0, 0);
       pdf.text(`Overall Rank: ${schoolRankingInfo.rank}`, 20, textY);
       pdf.text(`Normalised Average: ${averages.totalAverage.toFixed()}`, 75, textY);
-      pdf.text(`Average Marks: ${schoolRankingInfo.averageMarks.toFixed(2)}`, 144, textY);
+      pdf.text(`School's Average: ${schoolRankingInfo.averageMarks.toFixed(2)}`, 144, textY);
     }
     
     startY += headingImageHeight + 10;
     
     const bulletPoints = [
-      "The Round 1 quiz showcased incredible talent and enthusiasm among students, reflecting their dedication to academic excellence.",
-      "Each participant demonstrated remarkable effort, creativity, and problem-solving abilities.",
-      "The results highlighted the diversity of strengths across categories and underlined the competitive spirit of the students.",
-      "These performances serve as a reminder of the bright future awaiting these young minds as they grow and excel.",
-      "These achievements highlight the promising future that lies ahead for these young individuals as they continue to grow and succeed."
-    ];
+      "* Normalized Average: The normalized average represents the average marks calculated by considering the performance of all students who participated, ensuring a fair comparison.",
+      "** School's Average: The school's average is calculated as the average marks of all students who participated from your school, reflecting their collective performance.",
+      "The Round 1 quiz highlighted students' exceptional talent, creativity, and problem-solving abilities, showcasing their enthusiasm for academic excellence.",
+      "The results reflected a diverse range of strengths, emphasizing the competitive spirit and dedication of the participants.",
+      "These achievements underscore the immense potential and bright futures awaiting these young minds as they continue to grow and succeed."
+      ];
     
     pdf.setFontSize(12);
     pdf.setTextColor(0, 0, 0);
     
     const textWidth = 170;
     const bulletIndent = 10;
-    bulletPoints.forEach((point) => {
+
+    bulletPoints.forEach((point, index) => {
       const lines = pdf.splitTextToSize(point, textWidth - bulletIndent);
     
-      pdf.text("•", 14, startY);
+      // Set font style to bold for the first two points, normal otherwise
+      if (index < 2) {
+        pdf.setFont("helvetica", "bold");
+      } else {
+        pdf.setFont("helvetica", "normal");
+      }
+    
+      const bullet = index < 2 ? "" : "•";
+    
+      // Render bullet and text
+      pdf.text(bullet, 14, startY);
       pdf.text(lines, 20, startY);
     
-      startY += lines.length * 6;
+      startY += lines.length * 6; // Adjust Y position for the next point
     });
-    
     pdf.addPage();
 
     startY = 10;
 
+
   // pdf.addImage(footer, "PNG", 13, startY + 5, 185, 1.5);
-    
+  const pdfBytes = pdf.output('arraybuffer');
   const config = {
     pdf: pdf, // your jsPDF instance
     blueTab: blueTab, // your blue tab image
@@ -549,10 +722,18 @@ const generateCategoryTables = (
     headingImageHeight: headingImageHeight
   };
 
-  generateCategoryTables(fetchedData, schoolRankingInfo, config);
-
-  pdf.save("Round1_Detailed_Results.pdf");
-  
+   try {
+    await generateCategoryTables(
+      fetchedData, 
+      schoolRankingInfo, 
+      config,
+      barGraphRefs
+    );
+ 
+    pdf.save("Round1_Detailed_Results.pdf");
+  } catch (error) {
+    console.error('Error generating category tables:', error);
+  }
   };
 
   
@@ -599,7 +780,7 @@ const generateCategoryTables = (
   <div>
 
     </div>
-    <div className="h-[100vh] hidden bg-gray-50">
+    <div className="h-[1100vh] flex flex-col items-center justify-center  bg-gray-50">
       {/* Tables for Category 1 */}
       {fetchedData && (
         <>
@@ -611,6 +792,16 @@ const generateCategoryTables = (
             fetchedData={{ ...fetchedData, scores: category1Scores }}
             calculatePercentile={calculatePercentile}
           />
+          <div ref={barGraphRefs[0]} 
+          style={{ width: 800, height: 800 }}>
+            <BarGraph
+              category="Category 1"
+              section="Total"
+              frequencyData={category2}
+              sectionKey="totalMarks"
+              fetchedData={fetchedData}
+            />
+          </div>
           <TableComponent
             category="Category 1"
             section="Section 1"
@@ -619,6 +810,16 @@ const generateCategoryTables = (
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
           />
+          <div ref={barGraphRefs[1]} 
+          style={{ width: 800, height: 800 }}>
+            <BarGraph
+              category="Category 1"
+              section="Section 1"
+              frequencyData={category1Section1Marks}
+              sectionKey="section1Marks"
+              fetchedData={fetchedData}
+            />
+          </div>
           <TableComponent
             category="Category 1"
             section="Section 2"
@@ -627,6 +828,16 @@ const generateCategoryTables = (
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
           />
+          <div ref={barGraphRefs[2]} 
+          style={{ width: 800, height: 800 }}>
+            <BarGraph
+              category="Category 1"
+              section="Section 2"
+              frequencyData={category1Section2Marks}
+              sectionKey="section2Marks"
+              fetchedData={fetchedData}
+            />
+          </div>
           <TableComponent
             category="Category 1"
             section="Section 3"
@@ -635,7 +846,16 @@ const generateCategoryTables = (
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
           />
-
+           <div ref={barGraphRefs[3]} 
+          style={{ width: 800, height: 800 }}>
+            <BarGraph
+              category="Category 1"
+              section="Section 3"
+              frequencyData={category1Section3Marks}
+              sectionKey="section3Marks"
+              fetchedData={fetchedData}
+            />
+          </div>
           <TableComponent
             category="Category 2"
             section="Total"
@@ -644,6 +864,16 @@ const generateCategoryTables = (
             fetchedData={{ ...fetchedData, scores: category2Scores }}  
             calculatePercentile={calculatePercentile} 
           />
+           <div ref={barGraphRefs[4]} 
+          style={{ width: 800, height: 800 }}>
+            <BarGraph
+              category="Category 2"
+              section="Total"
+              frequencyData={category2}
+              sectionKey="totalMarks"
+              fetchedData={fetchedData}
+            />
+          </div>
           <TableComponent
             category="Category 2"
             section="Section 1"
@@ -652,6 +882,16 @@ const generateCategoryTables = (
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
           />
+             <div ref={barGraphRefs[5]} 
+          style={{ width: 800, height: 800 }}>
+            <BarGraph
+              category="Category 2"
+              section="Section 1"
+              frequencyData={category2Section1Marks}
+              sectionKey="section1Marks"
+              fetchedData={fetchedData}
+            />
+            </div>
           <TableComponent
             category="Category 2"
             section="Section 2"
@@ -660,7 +900,17 @@ const generateCategoryTables = (
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
           />
-          <TableComponent
+             <div ref={barGraphRefs[6]} 
+          style={{ width: 800, height: 800 }}>
+            <BarGraph
+              category="Category 2"
+              section="Section 2"
+              frequencyData={category2Section2Marks}
+              sectionKey="section2Marks"
+              fetchedData={fetchedData}
+            />
+            </div>
+            <TableComponent
             category="Category 2"
             section="Section 3"
             frequencyData={category2Section3Marks}
@@ -668,6 +918,17 @@ const generateCategoryTables = (
             fetchedData={fetchedData}
             calculatePercentile={calculatePercentile}
           />
+             <div ref={barGraphRefs[7]} 
+          style={{ width: 800, height: 800 }}>
+            <BarGraph
+              category="Category 2"
+              section="Section 3"
+              frequencyData={category2Section3Marks}
+              sectionKey="section3Marks"
+              fetchedData={fetchedData}
+            />
+            </div>
+         
         </>
       )}
     </div>
