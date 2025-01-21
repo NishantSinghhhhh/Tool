@@ -111,6 +111,7 @@ const getAverageScore = (category: string, sectionKey: string): number => {
       return 0;
   }
 };
+
 const BarGraph: React.FC<BarGraphProps> = ({
     category,
     section,
@@ -118,9 +119,19 @@ const BarGraph: React.FC<BarGraphProps> = ({
     sectionKey,
     fetchedData,
   }) => {
+    // Filter scores for the specific category
     const categoryScores = fetchedData.scores
       .filter(score => score.category === category)
       .sort((a, b) => b[sectionKey] - a[sectionKey]);
+    
+    // Check if all scores are 0 or if there are no scores
+    const allScoresZero = categoryScores.length === 0 || 
+      categoryScores.every(score => score[sectionKey] === 0);
+    
+    // Return null if all scores are 0 or no scores exist
+    if (allScoresZero) {
+      return null;
+    }
   
     const topStudents = categoryScores.slice(0, 6);
     const maxScore = getMaxScore(sectionKey);
@@ -203,7 +214,7 @@ const BarGraph: React.FC<BarGraphProps> = ({
       scales: {
         y: {
           beginAtZero: true,
-          max: maxScore + (maxScore * 0.15), // Increased padding for labels
+          max: maxScore + (maxScore * 0.15),
           title: {
             display: true,
             text: 'Marks',

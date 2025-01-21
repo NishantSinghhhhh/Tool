@@ -13,7 +13,7 @@ export const creds = [
     { username: "NAVYUG24800266", schoolName: "Army Public School Clement Town", password: "apsnavyug" },
     { username: "NAVYUG60008955", schoolName: "Army Public School, Chennai", password: "apsnavyug" },
     { username: "NAVYUG67001338", schoolName: "Army Public School Cannanore", password: "apsnavyug" },
-    { username: "NAVYUG24800165", schoolName: "Army Public School Dehradun Birpur", password: "apsnavyug" },
+    { username: "NAVYUG24800165", schoolName: "Army Public School, Birpur", password: "apsnavyug" },
     { username: "NAVYUG42240130", schoolName: "Army Public School Devlali", password: "apsnavyug" },
     { username: "NAVYUG18210135", schoolName: "Army Public School Dhar Road", password: "apsnavyug" },
     { username: "NAVYUG18000342", schoolName: "Army Public School Jammu Cantt", password: "apsnavyug" },

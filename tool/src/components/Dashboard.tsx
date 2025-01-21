@@ -11,6 +11,7 @@ import TableComponent from "./Dashboard/Table.tsx";
 import ScoresTable from "./Dashboard/ScoreTable.tsx";
 import { schoolAverageData } from "../data/schoolAverage.ts";
 import BarGraph from "../charts/BarGraph.tsx";
+import { useRankingContext } from '../context/DataContext.tsx';
 import domtoimage from 'dom-to-image-more';
 import { toPng } from 'html-to-image'; 
 import { PDFDocument } from 'pdf-lib';
@@ -168,26 +169,7 @@ const staticTexts: StaticTextsType = {
   }
 };
 
-async function compressPDF(pdfBytes: Uint8Array): Promise<Uint8Array> {
-  const pdfDoc = await PDFDocument.load(pdfBytes, { updateMetadata: false });
 
-  // Remove metadata
-  pdfDoc.setTitle('');
-  pdfDoc.setAuthor('');
-  pdfDoc.setSubject('');
-  pdfDoc.setKeywords([]);
-  pdfDoc.setProducer('');
-  pdfDoc.setCreator('');
-
-  // Save the compressed PDF
-  const compressedPdf = await pdfDoc.save({
-    useObjectStreams: true,  // Enable object stream compression
-    objectsPerTick: 20,      // Adjust compression level
-    updateFieldAppearances: true,
-  });
-
-  return compressedPdf;
-}
 
 const Dashboard: React.FC = () => {
   const { username } = useAuth();
@@ -225,29 +207,48 @@ const Dashboard: React.FC = () => {
   };
   
   const calculatePercentile = (frequencyData: Record<string, number>, score: number): number => {
+    // Convert frequency data to array and sort by marks
     const marksArray = Object.entries(frequencyData)
-      .map(([key, value]) => ({
-        marks: parseInt(key, 10),
-        frequency: value,
-      }))
-      .sort((a, b) => a.marks - b.marks); 
-  
-    const totalStudents = marksArray.reduce((acc, curr) => acc + curr.frequency, 0);
-    let studentsBelowScore = 0;
-  
-    
+        .map(([marks, frequency]) => ({
+            marks: parseInt(marks, 10),
+            frequency: frequency
+        }))
+        .sort((a, b) => a.marks - b.marks);
+
+    // Calculate total number of students
+    const totalStudents = marksArray.reduce((sum, curr) => sum + curr.frequency, 0);
+
+    // Count students below the given score
+    let studentsBelow = 0;
+    let studentsAtScore = 0;
+    let currentIndex = 0; // Track current student's position within same score group
+
     for (const { marks, frequency } of marksArray) {
-      if (marks < score) {
-        studentsBelowScore += frequency;
-      } else if (marks === score) {
-        
-        studentsBelowScore += frequency / 2; 
-        break;
-      }
+        if (marks < score) {
+            studentsBelow += frequency;
+        } else if (marks === score) {
+            studentsAtScore = frequency;
+            // Calculate student's position within this score group
+            // This will be different for each student with the same score
+            currentIndex++;
+            
+            // Calculate a slightly different percentile for each student
+            // by evenly distributing them across the range
+            const percentileStep = 1 / (studentsAtScore + 1);
+            const adjustedPercentile = 
+                ((studentsBelow + (currentIndex * percentileStep * studentsAtScore)) / totalStudents) * 100;
+
+            return Math.round(adjustedPercentile * 100) / 100;
+        }
     }
-    const percentile = (studentsBelowScore / totalStudents) * 100;
-    return percentile;
-  };
+
+    // Handle case where score is highest
+    if (studentsAtScore === 0) {
+        return 100;
+    }
+
+    return 0; // Handle case where score is not found
+};
   
   
   useEffect(() => {
@@ -270,7 +271,6 @@ const Dashboard: React.FC = () => {
     }
   }, [username]);
 
-
   const generateCategoryTables = async (
     fetchedData: BackendResponse | null | undefined,
     schoolRankingInfo: any,
@@ -279,8 +279,8 @@ const Dashboard: React.FC = () => {
 ): Promise<number> => {
     // Early return if data is invalid
     if (!fetchedData || !fetchedData.scores) {
-      console.error("No valid data available to generate tables");
-      return 0;
+        console.error("No valid data available to generate tables");
+        return 0;
     }
     const { pdf, blueTab, headingImageWidth, headingImageHeight } = config;
 
@@ -298,7 +298,7 @@ const Dashboard: React.FC = () => {
                 const imgWidth = 150;
                 const imgHeight = (offsetHeight / offsetWidth) * imgWidth;
 
-                pdf.addImage(dataUrl, 'PNG', 30, currentY -20, imgWidth, imgHeight);
+                pdf.addImage(dataUrl, 'PNG', 30, currentY - 20, imgWidth, imgHeight);
                 return currentY + imgHeight + 10;
             } catch (error) {
                 console.error('Error adding graph to PDF:', error);
@@ -312,10 +312,9 @@ const Dashboard: React.FC = () => {
         category: "Category 1" | "Category 2",
         sectionNumber: 0 | 1 | 2 | 3,
         frequencyData: Record<string, number>,
-        graphRef: React.MutableRefObject<HTMLDivElement | null>
-    ): Promise<void> => {
-        let currentY = 20; // Start from top of new page
-
+        graphRef: React.MutableRefObject<HTMLDivElement | null>,
+        isFirstPage: boolean
+    ): Promise<boolean> => {
         const sectionKey = `section${sectionNumber}Marks` as keyof UserScore;
         const sectionRows = fetchedData.scores
             .filter((score) => score.category === category)
@@ -335,10 +334,20 @@ const Dashboard: React.FC = () => {
                 };
             });
 
-            const sectionContent = staticTexts[category][sectionNumber];
+        // Skip rendering if there's no data for this section
+        if (sectionRows.length === 0) {
+            return false;
+        }
+
+        // Add new page if not the first page
+        if (!isFirstPage) {
+            pdf.addPage();
+        }
+
+        let currentY = 20;
+        const sectionContent = staticTexts[category][sectionNumber];
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "normal");
-        
 
         currentY += 6;
         pdf.addImage(blueTab, "PNG", 14, currentY - 8, headingImageWidth, headingImageHeight);
@@ -406,24 +415,25 @@ const Dashboard: React.FC = () => {
             currentY += headingImageHeight + 8;
         }
 
-        // Add graph below the table
-        await addGraphToPDF(graphRef, currentY+10);
+        await addGraphToPDF(graphRef, currentY + 10);
 
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "normal");
         currentY += 115;
-       
-        const textWidth = 170; 
+
+        const textWidth = 170;
         const bulletIndent = 10;
-        
+
         sectionContent.points.forEach((point: string, index: number) => {
             const lines = pdf.splitTextToSize(point, textWidth - bulletIndent);
             const bullet = index < 2 ? "•" : "•";
-        
+
             pdf.text(bullet, 14, currentY);
             pdf.text(lines, 20, currentY);
             currentY += lines.length * 6;
         });
+
+        return true;
     };
 
     const categories: Array<[
@@ -442,103 +452,104 @@ const Dashboard: React.FC = () => {
         ["Category 2", 3, category2Section3Marks, barGraphRefs[7]],
     ];
 
-    // Render each table and graph on a new page
-    for (let i = 0; i < categories.length; i++) {
-        const [category, section, frequencyData, graphRef] = categories[i];
-        
-        // Add a new page for each table except the first one
-        if (i > 0) {
-            pdf.addPage();
-        }
+    let pageCount = 0;
+    let isFirstPage = true;
 
-        await renderSingleTable(
+    // Render each table and graph on a new page
+    for (const [category, section, frequencyData, graphRef] of categories) {
+        const wasRendered = await renderSingleTable(
             category,
             section as 0 | 1 | 2 | 3,
             frequencyData,
-            graphRef
+            graphRef,
+            isFirstPage
         );
+
+        if (wasRendered) {
+            pageCount++;
+            isFirstPage = false;
+        }
     }
 
-    return pdf.internal.getCurrentPageInfo().pageNumber;
+    return pageCount;
 };
-  const handleFetchDetails = async () => {
-    if (!schoolName || schoolName.trim() === "") {
-      alert("School name is not valid.");
-      return;
+const handleFetchDetails = async () => {
+  if (!schoolName || schoolName.trim() === "") {
+    alert("School name is not valid.");
+    return;
+  }
+
+  setIsFetching(true);
+
+  try {
+    // Your existing fetch logic remains here...
+    const response = await fetch("http://localhost:7009/result/schoolName", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text: schoolName }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to send school name to backend");
     }
 
-    setIsFetching(true);
+    const data: BackendResponse = await response.json();
+    
+    console.log(data)
+    // Find matching school ranking data
+    const matchingSchool = schoolRankingData.find(
+      (school) => school.school === schoolName
+    );
+    
+    if (matchingSchool) {
+      console.log("School Ranking Details:", {
+        "School Name": matchingSchool.school,
+        "Overall Rank": matchingSchool.rank,
+        "Average Marks": matchingSchool.averageMarks.toFixed(2),
+        "Section Rankings": {
+          "Section 1": matchingSchool.section1Rank,
+          "Section 2": matchingSchool.section2Rank,
+          "Section 3": matchingSchool.section3Rank,
+          // "Category 1": matchingSchool.category1Rank,
 
-    try {
-      // Your existing fetch logic remains here...
-      const response = await fetch("http://localhost:7009/result/schoolName", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: schoolName }),
+        "Category 1 Averages": {
+          "Overall": matchingSchool.category1Average.toFixed(2),
+          "Section 1": matchingSchool.category1Section1Average.toFixed(2),
+          "Section 2": matchingSchool.category1Section2Average.toFixed(2),
+          "Section 3": matchingSchool.category1Section3Average.toFixed(2)
+        },
+        "Category 2 Averages": {
+          "Overall": matchingSchool.category2Average.toFixed(2),
+          "Section 1": matchingSchool.category2Section1Average.toFixed(2),
+          "Section 2": matchingSchool.category2Section2Average.toFixed(2),
+          "Section 3": matchingSchool.category2Section3Average.toFixed(2)
+        }
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to send school name to backend");
-      }
-
-      const data: BackendResponse = await response.json();
-      
-      console.log(data)
-      // Find matching school ranking data
-      const matchingSchool = schoolRankingData.find(
-        (school) => school.school === schoolName
-      );
-      
-      if (matchingSchool) {
-        console.log("School Ranking Details:", {
-          "School Name": matchingSchool.school,
-          "Overall Rank": matchingSchool.rank,
-          "Average Marks": matchingSchool.averageMarks.toFixed(2),
-          "Section Rankings": {
-            "Section 1": matchingSchool.section1Rank,
-            "Section 2": matchingSchool.section2Rank,
-            "Section 3": matchingSchool.section3Rank,
-            // "Category 1": matchingSchool.category1Rank,
-
-          },
-          "Category 1 Averages": {
-            "Overall": matchingSchool.category1Average.toFixed(2),
-            "Section 1": matchingSchool.category1Section1Average.toFixed(2),
-            "Section 2": matchingSchool.category1Section2Average.toFixed(2),
-            "Section 3": matchingSchool.category1Section3Average.toFixed(2)
-          },
-          "Category 2 Averages": {
-            "Overall": matchingSchool.category2Average.toFixed(2),
-            "Section 1": matchingSchool.category2Section1Average.toFixed(2),
-            "Section 2": matchingSchool.category2Section2Average.toFixed(2),
-            "Section 3": matchingSchool.category2Section3Average.toFixed(2)
-          }
-        });
-        setSchoolRanking(matchingSchool);
-      }
-
-      // Add student name and category to scores
-      const updatedScores = data.scores.map((score) => {
-        const matchingUser = data.userInfo.find((user) => user.username === score.username);
-        const category = matchingUser?.setid.startsWith("67") ? "Category 1" : "Category 2";
-        return {
-          ...score,
-          studentName: matchingUser?.student || "Unknown",
-          category,
-        };
-      });
-
-      setFetchedData({ ...data, scores: updatedScores });
-    } catch (error) {
-      console.error("Error sending school name to backend:", error);
-      alert("Failed to fetch details.");
-    } finally {
-      setIsFetching(false);
+      setSchoolRanking(matchingSchool);
     }
-  };
 
+    // Add student name and category to scores
+    const updatedScores = data.scores.map((score) => {
+      const matchingUser = data.userInfo.find((user) => user.username === score.username);
+      const category = matchingUser?.setid.startsWith("67") ? "Category 1" : "Category 2";
+      return {
+        ...score,
+        studentName: matchingUser?.student || "Unknown",
+        category,
+      };
+    });
+
+    setFetchedData({ ...data, scores: updatedScores });
+  } catch (error) {
+    console.error("Error sending school name to backend:", error);
+    alert("Failed to fetch details.");
+  } finally {
+    setIsFetching(false);
+  }
+};
    const generatePDF = async() => {
     const pdf = new jsPDF("p", "mm", "a4");
     registerPoppins(pdf);
@@ -780,158 +791,221 @@ const Dashboard: React.FC = () => {
   <div>
 
     </div>
-    <div className="h-[1100vh] flex flex-col items-center justify-center  bg-gray-50">
-      {/* Tables for Category 1 */}
-      {fetchedData && (
+    <div className="h-auto flex flex-col items-center justify-center bg-gray-50">
+  {fetchedData && (
+    <>
+      {/* Category 1 Components */}
+      {category1Scores && category1Scores.length > 0 && (
         <>
-           <TableComponent
-            category="Category 1"
-            section="Total"
-            frequencyData={category1} 
-            sectionKey="totalMarks" 
-            fetchedData={{ ...fetchedData, scores: category1Scores }}
-            calculatePercentile={calculatePercentile}
-          />
-          <div ref={barGraphRefs[0]} 
-          style={{ width: 800, height: 800 }}>
-            <BarGraph
-              category="Category 1"
-              section="Total"
-              frequencyData={category2}
-              sectionKey="totalMarks"
-              fetchedData={fetchedData}
-            />
-          </div>
-          <TableComponent
-            category="Category 1"
-            section="Section 1"
-            frequencyData={category1Section1Marks}
-            sectionKey="section1Marks"
-            fetchedData={fetchedData}
-            calculatePercentile={calculatePercentile}
-          />
-          <div ref={barGraphRefs[1]} 
-          style={{ width: 800, height: 800 }}>
-            <BarGraph
-              category="Category 1"
-              section="Section 1"
-              frequencyData={category1Section1Marks}
-              sectionKey="section1Marks"
-              fetchedData={fetchedData}
-            />
-          </div>
-          <TableComponent
-            category="Category 1"
-            section="Section 2"
-            frequencyData={category1Section2Marks}
-            sectionKey="section2Marks"
-            fetchedData={fetchedData}
-            calculatePercentile={calculatePercentile}
-          />
-          <div ref={barGraphRefs[2]} 
-          style={{ width: 800, height: 800 }}>
-            <BarGraph
-              category="Category 1"
-              section="Section 2"
-              frequencyData={category1Section2Marks}
-              sectionKey="section2Marks"
-              fetchedData={fetchedData}
-            />
-          </div>
-          <TableComponent
-            category="Category 1"
-            section="Section 3"
-            frequencyData={category1Section3Marks}
-            sectionKey="section3Marks"
-            fetchedData={fetchedData}
-            calculatePercentile={calculatePercentile}
-          />
-           <div ref={barGraphRefs[3]} 
-          style={{ width: 800, height: 800 }}>
-            <BarGraph
-              category="Category 1"
-              section="Section 3"
-              frequencyData={category1Section3Marks}
-              sectionKey="section3Marks"
-              fetchedData={fetchedData}
-            />
-          </div>
-          <TableComponent
-            category="Category 2"
-            section="Total"
-            frequencyData={category2}  
-            sectionKey="totalMarks"  
-            fetchedData={{ ...fetchedData, scores: category2Scores }}  
-            calculatePercentile={calculatePercentile} 
-          />
-           <div ref={barGraphRefs[4]} 
-          style={{ width: 800, height: 800 }}>
-            <BarGraph
-              category="Category 2"
-              section="Total"
-              frequencyData={category2}
-              sectionKey="totalMarks"
-              fetchedData={fetchedData}
-            />
-          </div>
-          <TableComponent
-            category="Category 2"
-            section="Section 1"
-            frequencyData={category2Section1Marks}
-            sectionKey="section1Marks"
-            fetchedData={fetchedData}
-            calculatePercentile={calculatePercentile}
-          />
-             <div ref={barGraphRefs[5]} 
-          style={{ width: 800, height: 800 }}>
-            <BarGraph
-              category="Category 2"
-              section="Section 1"
-              frequencyData={category2Section1Marks}
-              sectionKey="section1Marks"
-              fetchedData={fetchedData}
-            />
-            </div>
-          <TableComponent
-            category="Category 2"
-            section="Section 2"
-            frequencyData={category2Section2Marks}
-            sectionKey="section2Marks"
-            fetchedData={fetchedData}
-            calculatePercentile={calculatePercentile}
-          />
-             <div ref={barGraphRefs[6]} 
-          style={{ width: 800, height: 800 }}>
-            <BarGraph
-              category="Category 2"
-              section="Section 2"
-              frequencyData={category2Section2Marks}
-              sectionKey="section2Marks"
-              fetchedData={fetchedData}
-            />
-            </div>
-            <TableComponent
-            category="Category 2"
-            section="Section 3"
-            frequencyData={category2Section3Marks}
-            sectionKey="section3Marks"
-            fetchedData={fetchedData}
-            calculatePercentile={calculatePercentile}
-          />
-             <div ref={barGraphRefs[7]} 
-          style={{ width: 800, height: 800 }}>
-            <BarGraph
-              category="Category 2"
-              section="Section 3"
-              frequencyData={category2Section3Marks}
-              sectionKey="section3Marks"
-              fetchedData={fetchedData}
-            />
-            </div>
-         
+          {/* Total Marks */}
+          {category1Scores.some(score => score.totalMarks > 0) && (
+            <>
+              <div className="h-auto">
+                <TableComponent
+                  category="Category 1"
+                  section="Total"
+                  frequencyData={category1}
+                  sectionKey="totalMarks"
+                  fetchedData={{ ...fetchedData, scores: category1Scores }}
+                  calculatePercentile={calculatePercentile}
+                />
+              </div>
+              <div ref={barGraphRefs[0]} className="h-auto" style={{ width: 800, height: 800 }}>
+                <BarGraph
+                  category="Category 1"
+                  section="Total"
+                  frequencyData={category2}
+                  sectionKey="totalMarks"
+                  fetchedData={fetchedData}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Section 1 */}
+          {category1Scores.some(score => score.section1Marks > 0) && (
+            <>
+              <div className="h-auto">
+                <TableComponent
+                  category="Category 1"
+                  section="Section 1"
+                  frequencyData={category1Section1Marks}
+                  sectionKey="section1Marks"
+                  fetchedData={fetchedData}
+                  calculatePercentile={calculatePercentile}
+                />
+              </div>
+              <div ref={barGraphRefs[1]} className="h-auto" style={{ width: 800, height: 800 }}>
+                <BarGraph
+                  category="Category 1"
+                  section="Section 1"
+                  frequencyData={category1Section1Marks}
+                  sectionKey="section1Marks"
+                  fetchedData={fetchedData}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Section 2 */}
+          {category1Scores.some(score => score.section2Marks > 0) && (
+            <>
+              <div className="h-auto">
+                <TableComponent
+                  category="Category 1"
+                  section="Section 2"
+                  frequencyData={category1Section2Marks}
+                  sectionKey="section2Marks"
+                  fetchedData={fetchedData}
+                  calculatePercentile={calculatePercentile}
+                />
+              </div>
+              <div ref={barGraphRefs[2]} className="h-auto" style={{ width: 800, height: 800 }}>
+                <BarGraph
+                  category="Category 1"
+                  section="Section 2"
+                  frequencyData={category1Section2Marks}
+                  sectionKey="section2Marks"
+                  fetchedData={fetchedData}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Section 3 */}
+          {category1Scores.some(score => score.section3Marks > 0) && (
+            <>
+              <div className="h-auto">
+                <TableComponent
+                  category="Category 1"
+                  section="Section 3"
+                  frequencyData={category1Section3Marks}
+                  sectionKey="section3Marks"
+                  fetchedData={fetchedData}
+                  calculatePercentile={calculatePercentile}
+                />
+              </div>
+              <div ref={barGraphRefs[3]} className="h-auto" style={{ width: 800, height: 800 }}>
+                <BarGraph
+                  category="Category 1"
+                  section="Section 3"
+                  frequencyData={category1Section3Marks}
+                  sectionKey="section3Marks"
+                  fetchedData={fetchedData}
+                />
+              </div>
+            </>
+          )}
         </>
       )}
-    </div>
+
+      {/* Category 2 Components */}
+      {category2Scores && category2Scores.length > 0 && (
+        <>
+          {/* Total Marks */}
+          {category2Scores.some(score => score.totalMarks > 0) && (
+            <>
+              <div className="h-auto">
+                <TableComponent
+                  category="Category 2"
+                  section="Total"
+                  frequencyData={category2}
+                  sectionKey="totalMarks"
+                  fetchedData={{ ...fetchedData, scores: category2Scores }}
+                  calculatePercentile={calculatePercentile}
+                />
+              </div>
+              <div ref={barGraphRefs[4]} className="h-auto" style={{ width: 800, height: 800 }}>
+                <BarGraph
+                  category="Category 2"
+                  section="Total"
+                  frequencyData={category2}
+                  sectionKey="totalMarks"
+                  fetchedData={fetchedData}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Section 1 */}
+          {category2Scores.some(score => score.section1Marks > 0) && (
+            <>
+              <div className="h-auto">
+                <TableComponent
+                  category="Category 2"
+                  section="Section 1"
+                  frequencyData={category2Section1Marks}
+                  sectionKey="section1Marks"
+                  fetchedData={fetchedData}
+                  calculatePercentile={calculatePercentile}
+                />
+              </div>
+              <div ref={barGraphRefs[5]} className="h-auto" style={{ width: 800, height: 800 }}>
+                <BarGraph
+                  category="Category 2"
+                  section="Section 1"
+                  frequencyData={category2Section1Marks}
+                  sectionKey="section1Marks"
+                  fetchedData={fetchedData}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Section 2 */}
+          {category2Scores.some(score => score.section2Marks > 0) && (
+            <>
+              <div className="h-auto">
+                <TableComponent
+                  category="Category 2"
+                  section="Section 2"
+                  frequencyData={category2Section2Marks}
+                  sectionKey="section2Marks"
+                  fetchedData={fetchedData}
+                  calculatePercentile={calculatePercentile}
+                />
+              </div>
+              <div ref={barGraphRefs[6]} className="h-auto" style={{ width: 800, height: 800 }}>
+                <BarGraph
+                  category="Category 2"
+                  section="Section 2"
+                  frequencyData={category2Section2Marks}
+                  sectionKey="section2Marks"
+                  fetchedData={fetchedData}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Section 3 */}
+          {category2Scores.some(score => score.section3Marks > 0) && (
+            <>
+              <div className="h-auto">
+                <TableComponent
+                  category="Category 2"
+                  section="Section 3"
+                  frequencyData={category2Section3Marks}
+                  sectionKey="section3Marks"
+                  fetchedData={fetchedData}
+                  calculatePercentile={calculatePercentile}
+                />
+              </div>
+              <div ref={barGraphRefs[7]} className="h-auto" style={{ width: 800, height: 800 }}>
+                <BarGraph
+                  category="Category 2"
+                  section="Section 3"
+                  frequencyData={category2Section3Marks}
+                  sectionKey="section3Marks"
+                  fetchedData={fetchedData}
+                />
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </>
+  )}
+</div>
    
     </div>
   );

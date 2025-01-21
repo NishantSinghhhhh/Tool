@@ -1,41 +1,71 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+// RankingContext.tsx
 
-interface TableData {
-  scores: Array<[string, number]>;
-  userInfo: Array<{
-    username: string;
-    student: string;
-    schoolName: string;
-    category: string;
-  }>;
+import React, { createContext, useState, useContext, ReactNode } from 'react';
+
+// Define types for the fetched data
+interface Score {
+  username: string;
+  score: number;
+  studentName: string;
+  category: string;
 }
 
-interface DataContextType {
-  tableData: TableData | null;
-  setTableData: React.Dispatch<React.SetStateAction<TableData | null>>;
+interface BackendResponse {
+  scores: Score[];
+  userInfo: { username: string; student: string; setid: string }[];
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
+interface SchoolRankingData {
+  school: string;
+  rank: number;
+  averageMarks: number;
+  section1Rank: number;
+  section2Rank: number;
+  section3Rank: number;
+  category1Average: number;
+  category1Section1Average: number;
+  category1Section2Average: number;
+  category1Section3Average: number;
+  category2Average: number;
+  category2Section1Average: number;
+  category2Section2Average: number;
+  category2Section3Average: number;
+}
 
-export const useData = () => {
-  const context = useContext(DataContext);
+// Create the context interface
+interface RankingContextType {
+  schoolRanking: SchoolRankingData | null;
+  fetchedData: BackendResponse | null;
+  setSchoolRanking: React.Dispatch<React.SetStateAction<SchoolRankingData | null>>;
+  setFetchedData: React.Dispatch<React.SetStateAction<BackendResponse | null>>;
+  setIsFetching: React.Dispatch<React.SetStateAction<boolean>>;
+  isFetching: boolean;
+}
+
+const RankingContext = createContext<RankingContextType | undefined>(undefined);
+
+export const useRankingContext = () => {
+  const context = useContext(RankingContext);
   if (!context) {
-    throw new Error('useData must be used within a DataProvider');
+    throw new Error("useRankingContext must be used within a RankingProvider");
   }
   return context;
 };
 
-// Correctly typed DataProvider component
-interface DataProviderProps {
+interface RankingProviderProps {
   children: ReactNode;
 }
 
-export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
-  const [tableData, setTableData] = useState<TableData | null>(null);
+export const RankingProvider: React.FC<RankingProviderProps> = ({ children }) => {
+  const [schoolRanking, setSchoolRanking] = useState<SchoolRankingData | null>(null);
+  const [fetchedData, setFetchedData] = useState<BackendResponse | null>(null);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
 
   return (
-    <DataContext.Provider value={{ tableData, setTableData }}>
+    <RankingContext.Provider
+      value={{ schoolRanking, fetchedData, setSchoolRanking, setFetchedData, setIsFetching, isFetching }}
+    >
       {children}
-    </DataContext.Provider>
+    </RankingContext.Provider>
   );
 };
