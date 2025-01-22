@@ -3,18 +3,18 @@ import React from "react";
 interface TableComponentProps {
   category: string;
   section: string;
-  frequencyData: Record<string, number>;
   sectionKey: "section1Marks" | "section2Marks" | "section3Marks" | "totalMarks";
   fetchedData: any; // Define the type according to your data structure
-  calculatePercentile: (frequencyData: Record<string, number>, sectionMarks: number) => number;
+  maxMarks: number; // Maximum marks for the section
+  calculatePercentile: (maxMarks: number, studentMarks: number) => number;
 }
 
 const TableComponent: React.FC<TableComponentProps> = ({
   category,
   section,
-  frequencyData,
   sectionKey,
   fetchedData,
+  maxMarks,
   calculatePercentile,
 }) => {
   // Filtered data based on the category
@@ -27,7 +27,7 @@ const TableComponent: React.FC<TableComponentProps> = ({
   }
 
   return (
-    <div className="table-container mt-10 max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+    <div className="table-container mt-10 max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 w-[80rem]">
       <div className="overflow-x-auto">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">{`${category} - ${section}`}</h2>
         <table className="min-w-full divide-y divide-gray-200">
@@ -43,7 +43,7 @@ const TableComponent: React.FC<TableComponentProps> = ({
                 {`${section} Marks`}
               </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                {`${section} Percentile`}
+                {`${section} Percentage`}
               </th>
             </tr>
           </thead>
@@ -51,7 +51,8 @@ const TableComponent: React.FC<TableComponentProps> = ({
             {filteredData
               .sort((a: any, b: any) => b[sectionKey] - a[sectionKey]) // Sort descending by section marks
               .map((score: any, index: number) => {
-                const percentile = calculatePercentile(frequencyData, score[sectionKey]);
+                // Call calculatePercentile with maxMarks and student's marks
+                const percentage = calculatePercentile(maxMarks, score[sectionKey]);
 
                 return (
                   <tr
@@ -69,7 +70,7 @@ const TableComponent: React.FC<TableComponentProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-gray-900">
-                        {percentile.toFixed(2)}%
+                        {percentage.toFixed(2)}%
                       </span>
                     </td>
                   </tr>

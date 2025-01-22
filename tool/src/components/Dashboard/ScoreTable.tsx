@@ -13,26 +13,15 @@ interface ScoresTableProps {
 }
 
 const ScoresTable: React.FC<ScoresTableProps> = ({ scores, totalMarks }) => {
-  const calculatePercentile = (totalMarks: Record<string, number>, score: number): number => {
-    const marksArray = Object.entries(totalMarks)
-      .map(([key, value]) => ({
-        marks: parseInt(key, 10),
-        frequency: value,
-      }))
-      .sort((a, b) => a.marks - b.marks); // Sort marks in ascending order
+  const calculatePercentile = (maxMarks: number, studentMarks: number): number => {
+    if (studentMarks > maxMarks) {
+        throw new Error("Student marks cannot exceed maximum marks.");
+    }
 
-    const totalStudents = marksArray.reduce((acc, curr) => acc + curr.frequency, 0);
-    let cumulativeFreq = 0;
+    const percentage = (studentMarks / maxMarks) * 100;
 
-    return marksArray.reduce((acc, curr) => {
-      cumulativeFreq += curr.frequency;
-      if (curr.marks === score) {
-        acc = ((cumulativeFreq - curr.frequency / 2) / totalStudents) * 100;
-      }
-      return acc;
-    }, 0);
-  };
-
+    return Math.round(percentage * 100) / 100; // Round to 2 decimal places
+};
   return (
     <div className="mt-10 max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
       <div className="overflow-x-auto">
@@ -49,7 +38,7 @@ const ScoresTable: React.FC<ScoresTableProps> = ({ scores, totalMarks }) => {
                 Total Marks
               </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                Percentile
+                Percentage
               </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
                 Category
@@ -62,7 +51,7 @@ const ScoresTable: React.FC<ScoresTableProps> = ({ scores, totalMarks }) => {
               .filter((score) => score.category === "Category 1")
               .sort((a, b) => b.totalMarks - a.totalMarks)
               .map((score, index) => {
-                const percentile = calculatePercentile(totalMarks, score.totalMarks);
+                const percentile = calculatePercentile(100, score.totalMarks);
                 return (
                   <tr key={`cat1-${index}`} className="hover:bg-gray-50 transition-colors duration-200">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -83,13 +72,11 @@ const ScoresTable: React.FC<ScoresTableProps> = ({ scores, totalMarks }) => {
                   </tr>
                 );
               })}
-
-            {/* Render Category 2 */}
             {scores
               .filter((score) => score.category === "Category 2")
               .sort((a, b) => b.totalMarks - a.totalMarks)
               .map((score, index) => {
-                const percentile = calculatePercentile(totalMarks, score.totalMarks);
+                const percentile = calculatePercentile(100, score.totalMarks);
                 return (
                   <tr key={`cat2-${index}`} className="hover:bg-gray-50 transition-colors duration-200">
                     <td className="px-6 py-4 whitespace-nowrap">

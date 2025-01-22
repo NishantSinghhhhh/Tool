@@ -78,7 +78,7 @@ interface SchoolRankingData {
   category2Section2Rank: number;
   category2Section3Rank: number;
 }
-// Define interfaces for our data structure
+
 interface SectionContent {
   title: string;
   points: string[];
@@ -193,12 +193,12 @@ const Dashboard: React.FC = () => {
   const barGraphRefs = [
     useRef<HTMLDivElement | null>(null),
     useRef<HTMLDivElement | null>(null),
-    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
-    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
-    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
-    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
-    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
-    useRef<HTMLDivElement | null>(null), // Add as many as needed for your BarGraphs
+    useRef<HTMLDivElement | null>(null), 
+    useRef<HTMLDivElement | null>(null), 
+    useRef<HTMLDivElement | null>(null), 
+    useRef<HTMLDivElement | null>(null), 
+    useRef<HTMLDivElement | null>(null), 
+    useRef<HTMLDivElement | null>(null), 
   ];
 
   const registerPoppins = (pdf: jsPDF) => {
@@ -206,50 +206,16 @@ const Dashboard: React.FC = () => {
     pdf.addFont("Poppins-Regular.ttf", "Poppins", "normal");
   };
   
-  const calculatePercentile = (frequencyData: Record<string, number>, score: number): number => {
-    // Convert frequency data to array and sort by marks
-    const marksArray = Object.entries(frequencyData)
-        .map(([marks, frequency]) => ({
-            marks: parseInt(marks, 10),
-            frequency: frequency
-        }))
-        .sort((a, b) => a.marks - b.marks);
-
-    // Calculate total number of students
-    const totalStudents = marksArray.reduce((sum, curr) => sum + curr.frequency, 0);
-
-    // Count students below the given score
-    let studentsBelow = 0;
-    let studentsAtScore = 0;
-    let currentIndex = 0; // Track current student's position within same score group
-
-    for (const { marks, frequency } of marksArray) {
-        if (marks < score) {
-            studentsBelow += frequency;
-        } else if (marks === score) {
-            studentsAtScore = frequency;
-            // Calculate student's position within this score group
-            // This will be different for each student with the same score
-            currentIndex++;
-            
-            // Calculate a slightly different percentile for each student
-            // by evenly distributing them across the range
-            const percentileStep = 1 / (studentsAtScore + 1);
-            const adjustedPercentile = 
-                ((studentsBelow + (currentIndex * percentileStep * studentsAtScore)) / totalStudents) * 100;
-
-            return Math.round(adjustedPercentile * 100) / 100;
-        }
+  const calculatePercentile = (maxMarks: number, studentMarks: number): number => {
+    if (studentMarks > maxMarks) {
+        throw new Error("Student marks cannot exceed maximum marks.");
     }
 
-    // Handle case where score is highest
-    if (studentsAtScore === 0) {
-        return 100;
-    }
+    const percentage = (studentMarks / maxMarks) * 100;
 
-    return 0; // Handle case where score is not found
+    return Math.round(percentage * 100) / 100; // Round to 2 decimal places
 };
-  
+
   
   useEffect(() => {
     const user = creds.find((cred) => cred.username === username);
@@ -325,7 +291,7 @@ const Dashboard: React.FC = () => {
             })
             .map((score) => {
                 const sectionMarks = sectionNumber === 0 ? score.totalMarks : score[sectionKey] as number;
-                const percentile = calculatePercentile(frequencyData, sectionMarks);
+                const percentile = calculatePercentile(100, sectionMarks);
                 return {
                     username: score.username,
                     studentName: score.studentName,
@@ -627,7 +593,7 @@ const handleFetchDetails = async () => {
       { header: "Username", dataKey: "username" },
       { header: "Student Name", dataKey: "studentName" },
       { header: "Obtained Marks", dataKey: "totalMarks" },
-      { header: "Percentile", dataKey: "percentile" },
+      { header: "Percentage", dataKey: "percentile" },
       { header: "Category", dataKey: "category" },
     ];
     
@@ -635,7 +601,7 @@ const handleFetchDetails = async () => {
       .sort((a, b) => b.totalMarks - a.totalMarks)
       .slice(0, 12)
       .map((score) => {
-        const totalMarksPercentile = calculatePercentile(totalMarks, score.totalMarks);
+        const totalMarksPercentile = calculatePercentile(100, score.totalMarks);
     
         return {
           username: score.username,
@@ -802,13 +768,14 @@ const handleFetchDetails = async () => {
             <>
               <div className="h-auto">
                 <TableComponent
-                  category="Category 1"
-                  section="Total"
-                  frequencyData={category1}
-                  sectionKey="totalMarks"
-                  fetchedData={{ ...fetchedData, scores: category1Scores }}
-                  calculatePercentile={calculatePercentile}
-                />
+              category="Category 1"
+              section="Total"
+              sectionKey="totalMarks"
+              fetchedData={{ ...fetchedData, scores: category1Scores }}
+              maxMarks={100} // Pass maximum marks for the section
+              calculatePercentile={(maxMarks, studentMarks) => (studentMarks / maxMarks) * 100}
+            />  
+
               </div>
               <div ref={barGraphRefs[0]} className="h-auto" style={{ width: 800, height: 800 }}>
                 <BarGraph
@@ -829,7 +796,7 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 1"
                   section="Section 1"
-                  frequencyData={category1Section1Marks}
+                  maxMarks={40}
                   sectionKey="section1Marks"
                   fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}
@@ -854,7 +821,7 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 1"
                   section="Section 2"
-                  frequencyData={category1Section2Marks}
+                  maxMarks={40}
                   sectionKey="section2Marks"
                   fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}
@@ -879,7 +846,7 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 1"
                   section="Section 3"
-                  frequencyData={category1Section3Marks}
+                  maxMarks={25}
                   sectionKey="section3Marks"
                   fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}
@@ -909,9 +876,9 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 2"
                   section="Total"
-                  frequencyData={category2}
+                  maxMarks={100}
                   sectionKey="totalMarks"
-                  fetchedData={{ ...fetchedData, scores: category2Scores }}
+                  fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}
                 />
               </div>
@@ -934,7 +901,7 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 2"
                   section="Section 1"
-                  frequencyData={category2Section1Marks}
+                  maxMarks={40}
                   sectionKey="section1Marks"
                   fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}
@@ -959,7 +926,7 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 2"
                   section="Section 2"
-                  frequencyData={category2Section2Marks}
+                  maxMarks={40}
                   sectionKey="section2Marks"
                   fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}
@@ -984,7 +951,7 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 2"
                   section="Section 3"
-                  frequencyData={category2Section3Marks}
+                  maxMarks={25}
                   sectionKey="section3Marks"
                   fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}
