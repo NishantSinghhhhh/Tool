@@ -77,8 +77,8 @@ const Login: React.FC = () => {
             Navyug Result Portal
           </h1>
           <p className="text-gray-600 mb-6 text-center text-sm">
-            Fill Up Your Details to View Qualified Teams For 
-            <br />Navyug AI Hackathon 2024-25 (Round 1)
+            Fill Up Your Details to View Detailed Report For 
+            <br /> (Round 1)
           </p>
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
