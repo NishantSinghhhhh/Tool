@@ -281,24 +281,36 @@ const Dashboard: React.FC = () => {
         graphRef: React.MutableRefObject<HTMLDivElement | null>,
         isFirstPage: boolean
     ): Promise<boolean> => {
+
         const sectionKey = `section${sectionNumber}Marks` as keyof UserScore;
-        const sectionRows = fetchedData.scores
-            .filter((score) => score.category === category)
-            .sort((a, b) => {
-                const aValue = a[sectionKey] as number;
-                const bValue = b[sectionKey] as number;
-                return bValue - aValue;
-            })
-            .map((score) => {
-                const sectionMarks = sectionNumber === 0 ? score.totalMarks : score[sectionKey] as number;
-                const percentile = calculatePercentile(100, sectionMarks);
-                return {
-                    username: score.username,
-                    studentName: score.studentName,
-                    marks: sectionMarks,
-                    percentile: percentile.toFixed(2) + "%"
-                };
-            });
+
+    // Define the max marks for each section
+    const maxMarks = (() => {
+        if (sectionNumber === 0) return 100; // Total
+        if (sectionNumber === 1) return 40;  // Section 1
+        if (sectionNumber === 2) return 40;  // Section 2
+        if (sectionNumber === 3) return 20;  // Section 3
+        return 100; // Default fallback
+    })();
+
+    const sectionRows = fetchedData.scores
+        .filter((score) => score.category === category)
+        .sort((a, b) => {
+            const aValue = a[sectionKey] as number;
+            const bValue = b[sectionKey] as number;
+            return bValue - aValue;
+        })
+        .map((score) => {
+            const sectionMarks = sectionNumber === 0 ? score.totalMarks : (score[sectionKey] as number);
+            // Use dynamic maxMarks based on the section
+            const percentile = calculatePercentile(maxMarks, sectionMarks);
+            return {
+                username: score.username,
+                studentName: score.studentName,
+                marks: sectionMarks,
+                percentile: percentile.toFixed(2) + "%"
+            };
+        });
 
         // Skip rendering if there's no data for this section
         if (sectionRows.length === 0) {
@@ -329,7 +341,7 @@ const Dashboard: React.FC = () => {
                 { header: "Username", dataKey: "username" },
                 { header: "Student Name", dataKey: "studentName" },
                 { header: sectionNumber === 0 ? "Total Marks" : `Section ${sectionNumber} Marks`, dataKey: "marks" },
-                { header: "Percentile", dataKey: "percentile" },
+                { header: "Percentage", dataKey: "percentile" },
             ],
             body: sectionRows,
             startY: currentY,
@@ -558,7 +570,7 @@ const handleFetchDetails = async () => {
     const bulletPointIcon = "\u2022";
     
     const firstLine = `${bulletPointIcon} This report consists of details of each category and each section, with the marks and the`;
-    const secondLine = `percentile of the student.`;
+    const secondLine = `percentage of the student.`;
     pdf.text(firstLine, 14, startY);
     startY += 7;
     pdf.text(secondLine, 18, startY);
@@ -846,7 +858,7 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 1"
                   section="Section 3"
-                  maxMarks={25}
+                  maxMarks={20}
                   sectionKey="section3Marks"
                   fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}
@@ -951,7 +963,7 @@ const handleFetchDetails = async () => {
                 <TableComponent
                   category="Category 2"
                   section="Section 3"
-                  maxMarks={25}
+                  maxMarks={20}
                   sectionKey="section3Marks"
                   fetchedData={fetchedData}
                   calculatePercentile={calculatePercentile}

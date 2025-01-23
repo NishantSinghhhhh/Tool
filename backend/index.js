@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import resultRoute from './Routes/ResultRoute.js';
 import dotenv from 'dotenv';
 import DataToJson from './Routes/DataToJson.js';
+import Verification from "./Routes/Verification.js"
 
 dotenv.config(); // Load environment variables
 
@@ -37,6 +38,7 @@ app.get('/', (req, res) => {
 
 app.use('/result', resultRoute);
 app.use('/datatoJson', DataToJson);
+app.use('/verification', Verification);
 
 app.use((err, req, res, next) => {
     console.error(err.stack);

@@ -22,6 +22,23 @@ const NumberVerificationForm: React.FC = () => {
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [responseData, setResponseData] = useState<string>("");
+
+  const handleJson = async () => {
+    try {
+      const payload = {
+        isActive: true, 
+      };
+
+      const response = await axios.post("http://localhost:7009/verification/all", payload);
+
+      console.log("Response Data:", response.data);
+      setResponseData(JSON.stringify(response.data, null, 2)); // Set formatted JSON response
+    } catch (error: any) {
+      console.error("Error making the request:", error.message);
+      setResponseData("An error occurred while making the request.");
+    }
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,7 +72,9 @@ const NumberVerificationForm: React.FC = () => {
         <img src={logo} alt="Logo" className="h-12 w-12" />
         <img src={logoait} alt="Secondary Logo" className="h-12 w-12" />
       </div>
-
+      <div>
+        <button onClick={handleJson}>Add data</button>
+      </div>
       {/* Main Content Section */}
       <div className="w-[100%] max-w-lg bg-white rounded-lg shadow-lg p-6 mt-[60px] mb-[30px]">
         <h1 className="text-2xl text-black  font-bold text-center mb-6">Certificate Verification</h1>

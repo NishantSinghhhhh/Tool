@@ -1,0 +1,113 @@
+{
+  "success": true,
+  "data": [
+    {
+      "holderName": "Adyashis Biswas",
+      "certificateId": "700120731",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 1"
+    },
+    {
+      "holderName": "Anurag Ghosh",
+      "certificateId": "700120732",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 1"
+    },
+    {
+      "holderName": "Diganta Bag",
+      "certificateId": "700120733",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 2"
+    },
+    {
+      "holderName": "Divyanshu Mandal",
+      "certificateId": "700120734",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 1"
+    },
+    {
+      "holderName": "Dweeptanu Bera",
+      "certificateId": "700120735",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 2"
+    },
+    {
+      "holderName": "Parijat Das",
+      "certificateId": "700120736",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 2"
+    },
+    {
+      "holderName": "Prithwish Acharjee",
+      "certificateId": "700120737",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 1"
+    },
+    {
+      "holderName": "Sankhadeep Biswas",
+      "certificateId": "700120738",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 2"
+    },
+    {
+      "holderName": "Sohana Ghosh",
+      "certificateId": "700120739",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 2"
+    },
+    {
+      "holderName": "Sutirtho Ghosh",
+      "certificateId": "7001207310",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 1"
+    },
+    {
+      "holderName": "Teesta Basu",
+      "certificateId": "7001207311",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 2"
+    },
+    {
+      "holderName": "Trisha Gupta",
+      "certificateId": "7001207312",
+      "school": "APS BARRACKPORE",
+      "issueDate": "23 January 2025",
+      "status": "verified",
+      "passkey": "",
+      "category": "Category 1"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import Header from './Dashboard/Header';
 import { useAuth } from '../context/AuthContext';
 import { schoolRankingData } from "../data/schoolRanking.ts";
 import { creds } from "../data/creds.ts";
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import pdfTemplate from '../assets/Round 1 participants.pdf';
 import cursive from "../assets/Italianno-Regular.ttf"
 import fontkit from '@pdf-lib/fontkit';
@@ -65,26 +65,28 @@ const ECertificate = () => {
 const numbersInUsername = username?.match(/\d+/g)?.join("") || "No numbers found";
 console.log("Numbers in UserName: ", numbersInUsername);
 
-  const handleFetchDetails = async () => {
-    if (!schoolName || schoolName.trim() === "") {
-      alert("School name is not valid.");
-      return;
+const handleFetchDetails = async () => {
+  if (!schoolName || schoolName.trim() === "") {
+    alert("School name is not valid.");
+    return;
+  }
+
+  setIsFetching(true);
+  try {
+    const response = await fetch("http://localhost:7009/result/schoolName", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: schoolName }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    setIsFetching(true);
-    try {
-      const response = await fetch("http://localhost:7009/result/schoolName", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: schoolName }),
-      });
+    const data: BackendResponse = await response.json();
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: BackendResponse = await response.json();
-      const updatedScores = data.scores.map((score) => {
+    const updatedScores = data.scores
+      .map((score) => {
         const matchingUser = data.userInfo.find((user) => user.username === score.username);
         const category = matchingUser?.setid.startsWith("67") ? "Category 1" : "Category 2";
         return {
@@ -92,39 +94,38 @@ console.log("Numbers in UserName: ", numbersInUsername);
           studentName: matchingUser?.student || "Unknown",
           category,
         };
-      });
+      })
+      // Sort by `studentName` in alphabetical order
+      .sort((a, b) => a.studentName.localeCompare(b.studentName));
 
-      setFetchedData({ ...data, scores: updatedScores });
-    } catch (error) {
-      alert("Failed to fetch details.");
-    } finally {
-      setIsFetching(false);
-    }
-  };
+    setFetchedData({ ...data, scores: updatedScores });
+  } catch (error) {
+    alert("Failed to fetch details.");
+  } finally {
+    setIsFetching(false);
+  }
+};
 
   const generateCertificate = async (studentName: string, uniqueNumber: string) => {
     const templateResponse = await fetch(pdfTemplate);
     const fontResponse = await fetch(cursive);
-  
+
     const templateBuffer = await templateResponse.arrayBuffer();
     const fontBuffer = await fontResponse.arrayBuffer();
-  
+
     const pdfDoc = await PDFDocument.load(templateBuffer);
     pdfDoc.registerFontkit(fontkit);
     const customFont = await pdfDoc.embedFont(fontBuffer);
-  
-    // Correctly embed the standard font using the StandardFonts enum
-    const normalFont = await pdfDoc.embedStandardFont(StandardFonts.Helvetica);
-  
+
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
     const { width, height } = firstPage.getSize();
-  
+
     const fontSize = 36;
     const textWidth = customFont.widthOfTextAtSize(studentName, fontSize);
     const x = (width - textWidth) / 2;
     const y = height / 2 + 1;
-  
+
     firstPage.drawText(studentName, {
       x,
       y,
@@ -132,33 +133,19 @@ console.log("Numbers in UserName: ", numbersInUsername);
       font: customFont,
       color: rgb(0, 0, 0),
     });
-  
+
     const numberFontSize = 24;
-    const navFontSize = 12;
-    const numberX = 665;
-    const numberY = 22;
-  
-    // Draw "NAV" with the normal font
-    firstPage.drawText("NAV-", {
-      x: numberX,
-      y: numberY,
-      size: navFontSize,
-      font: normalFont,
-      color: rgb(1, 0, 0), // Black color
-    });
-  
-    // Measure the width of "NAV" to adjust the position of the unique number
-    const navTextWidth = normalFont.widthOfTextAtSize("NAV", navFontSize);
-  
-    // Draw the unique number with the custom font after "NAV"
+    const numberX =  665;
+    const numberY =  22
+
     firstPage.drawText(uniqueNumber, {
-      x: numberX + navTextWidth + 5, // Add a small gap after "NAV"
+      x: numberX,
       y: numberY,
       size: numberFontSize,
       font: customFont,
-      color: rgb(1, 0, 0), // Red color
+      color: rgb(1, 0, 0),
     });
-  
+
     return await pdfDoc.save();
   };
 
@@ -186,10 +173,10 @@ console.log("Numbers in UserName: ", numbersInUsername);
   
   return (
     <div>
-      <div className="shadow-lg bg-gray-50">
+      <div className="shadow-lg">
         <Header />
         <div className="bg-gray-50 h-[100vh]">
-        <div className="flex items-center justify-center gap-[80px] mt-[2rem] p-4">
+        <div className="flex items-center justify-center gap-[80px] p-4">
             <button
               onClick={handleFetchDetails}
               disabled={isFetching}
@@ -206,12 +193,14 @@ console.log("Numbers in UserName: ", numbersInUsername);
               Download All
             </button>
           </div>
+          {/* School Ranking Section */}
+          
 
-       
+          {/* User Scores with Generate Certificate button for each student */}
           {fetchedData && fetchedData.scores.length > 0 && (
-            <div className='text-black h-[200px] w-[100vw] flex items-center justify-center font-bold text-xl'>
-              The pdfs are generated , now  you may proceed to download them 
-            </div>
+                <div className="p-4 mt-8 h-[300px]  font-bold text-2xl text-black flex items-center justify-center">
+                Data is now fetched you may download the certificates
+              </div>
           )}
         </div>
       </div>
